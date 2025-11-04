@@ -1,3 +1,5 @@
+const tokens = require('./src/styles/tokens.json');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -5,24 +7,45 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class', // Enable dark mode via class strategy
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+        // Brand colors from Gorilla Smash Club logo
+        primary: tokens.colors.light.primary,
+        accent: tokens.colors.light.accent,
+        secondary: tokens.colors.light.secondary,
+        highlight: tokens.colors.light.highlight,
+        success: tokens.colors.light.success,
+        warning: tokens.colors.light.warning,
+        error: tokens.colors.light.error,
+        gray: tokens.colors.light.gray,
+        
+        // Dark mode variants (automatically applied with dark: prefix)
+        dark: {
+          primary: tokens.colors.dark.primary,
+          accent: tokens.colors.dark.accent,
+          secondary: tokens.colors.dark.secondary,
         },
+      },
+      spacing: tokens.spacing,
+      borderRadius: tokens.borderRadius,
+      boxShadow: tokens.shadows,
+      fontFamily: {
+        display: tokens.fontFamily.display,
+        sans: tokens.fontFamily.sans,
+        mono: tokens.fontFamily.mono,
+      },
+      fontSize: tokens.fontSize,
+      transitionDuration: {
+        fast: tokens.motion.duration.fast,
+        normal: tokens.motion.duration.normal,
+        slow: tokens.motion.duration.slow,
+      },
+      transitionTimingFunction: {
+        default: tokens.motion.easing.default,
       },
     },
   },
   plugins: [],
 };
-

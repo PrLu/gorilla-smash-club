@@ -26,12 +26,20 @@ export function useTournaments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*')
+        .select(`
+          *,
+          registrations:registrations(count)
+        `)
         .in('status', ['open', 'closed', 'in_progress', 'completed'])
         .order('start_date', { ascending: true });
 
       if (error) throw error;
-      return data as Tournament[];
+      
+      // Format the data to include participant count
+      return data.map((tournament: any) => ({
+        ...tournament,
+        participant_count: tournament.registrations?.[0]?.count || 0,
+      })) as (Tournament & { participant_count: number })[];
     },
   });
 }
@@ -50,12 +58,20 @@ export function useMyTournaments() {
 
       const { data, error } = await supabase
         .from('tournaments')
-        .select('*')
+        .select(`
+          *,
+          registrations:registrations(count)
+        `)
         .eq('organizer_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Tournament[];
+      
+      // Format the data to include participant count
+      return data.map((tournament: any) => ({
+        ...tournament,
+        participant_count: tournament.registrations?.[0]?.count || 0,
+      })) as (Tournament & { participant_count: number })[];
     },
   });
 }

@@ -33,18 +33,59 @@ export function useTournamentRegistrations(tournamentId: string) {
         .from('registrations')
         .select(`
           *,
-          player:players(*),
+          player:players(
+            id,
+            first_name,
+            last_name,
+            player_rating,
+            gender,
+            profile_id,
+            profiles!players_profile_id_fkey(email)
+          ),
           team:teams(
-            *,
-            player1:players!teams_player1_id_fkey(*),
-            player2:players!teams_player2_id_fkey(*)
+            id,
+            name,
+            player1:players!teams_player1_id_fkey(
+              id,
+              first_name,
+              last_name,
+              player_rating,
+              gender,
+              profiles!players_profile_id_fkey(email)
+            ),
+            player2:players!teams_player2_id_fkey(
+              id,
+              first_name,
+              last_name,
+              player_rating,
+              gender,
+              profiles!players_profile_id_fkey(email)
+            )
           )
         `)
-        .eq('tournament_id', tournamentId)
-        .eq('status', 'confirmed');
+        .eq('tournament_id', tournamentId);
 
       if (error) throw error;
-      return data;
+      
+      // Flatten the nested profile email into player object
+      return data.map((reg: any) => ({
+        ...reg,
+        player: reg.player ? {
+          ...reg.player,
+          email: reg.player.profiles?.email,
+        } : null,
+        team: reg.team ? {
+          ...reg.team,
+          player1: reg.team.player1 ? {
+            ...reg.team.player1,
+            email: reg.team.player1.profiles?.email,
+          } : null,
+          player2: reg.team.player2 ? {
+            ...reg.team.player2,
+            email: reg.team.player2.profiles?.email,
+          } : null,
+        } : null,
+      }));
     },
     enabled: !!tournamentId,
   });

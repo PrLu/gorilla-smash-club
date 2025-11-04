@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { Button, Input, Select, Card } from '@/components/ui';
 import toast from 'react-hot-toast';
+import { Calendar, MapPin, Users, Trophy, DollarSign } from 'lucide-react';
 
 interface TournamentFormData {
   title: string;
@@ -18,11 +20,14 @@ interface TournamentFormData {
   status: 'draft' | 'open' | 'closed';
 }
 
+/**
+ * Enhanced tournament creation form using design system components
+ * Includes validation, loading states, and better UX
+ */
 export function TournamentForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split('T')[0];
 
   const {
@@ -58,7 +63,7 @@ export function TournamentForm() {
       return tournament;
     },
     onSuccess: (tournament) => {
-      toast.success('Tournament created successfully!');
+      toast.success('🎉 Tournament created successfully!');
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['my-tournaments'] });
       router.push(`/tournament/${tournament.id}`);
@@ -74,18 +79,14 @@ export function TournamentForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div>
-        <label htmlFor="title" className="mb-1 block text-sm font-medium text-gray-700">
-          Tournament Name *
-        </label>
-        <input
-          {...register('title', { required: 'Title is required' })}
-          type="text"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          placeholder="Summer Pickleball Championship"
-        />
-        {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>}
-      </div>
+      <Input
+        {...register('title', { required: 'Tournament name is required' })}
+        label="Tournament Name"
+        placeholder="Summer Pickleball Championship"
+        error={errors.title?.message}
+        leftIcon={<Trophy className="h-5 w-5" />}
+        required
+      />
 
       <div>
         <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
@@ -93,128 +94,101 @@ export function TournamentForm() {
         </label>
         <textarea
           {...register('description')}
+          id="description"
           rows={4}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          placeholder="Tournament description..."
+          className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          placeholder="Tell participants about your tournament..."
         />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label htmlFor="start_date" className="mb-1 block text-sm font-medium text-gray-700">
-            Start Date *
-          </label>
-          <input
-            {...register('start_date', { required: 'Start date is required' })}
-            type="date"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          />
-          {errors.start_date && (
-            <p className="mt-1 text-sm text-red-600">{errors.start_date.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="end_date" className="mb-1 block text-sm font-medium text-gray-700">
-            End Date *
-          </label>
-          <input
-            {...register('end_date', { required: 'End date is required' })}
-            type="date"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          />
-          {errors.end_date && (
-            <p className="mt-1 text-sm text-red-600">{errors.end_date.message}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="location" className="mb-1 block text-sm font-medium text-gray-700">
-          Location *
-        </label>
-        <input
-          {...register('location', { required: 'Location is required' })}
-          type="text"
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          placeholder="City Sports Complex"
+        <Input
+          {...register('start_date', { required: 'Start date is required' })}
+          label="Start Date"
+          type="date"
+          error={errors.start_date?.message}
+          leftIcon={<Calendar className="h-5 w-5" />}
+          required
         />
-        {errors.location && (
-          <p className="mt-1 text-sm text-red-600">{errors.location.message}</p>
-        )}
+
+        <Input
+          {...register('end_date', { required: 'End date is required' })}
+          label="End Date"
+          type="date"
+          error={errors.end_date?.message}
+          leftIcon={<Calendar className="h-5 w-5" />}
+          required
+        />
       </div>
+
+      <Input
+        {...register('location', { required: 'Location is required' })}
+        label="Location"
+        placeholder="City Sports Complex, Downtown"
+        error={errors.location?.message}
+        leftIcon={<MapPin className="h-5 w-5" />}
+        required
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div>
-          <label htmlFor="format" className="mb-1 block text-sm font-medium text-gray-700">
-            Format *
-          </label>
-          <select
-            {...register('format', { required: true })}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-          >
-            <option value="singles">Singles</option>
-            <option value="doubles">Doubles</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
+        <Select
+          {...register('format', { required: true })}
+          label="Format"
+          required
+          options={[
+            { value: 'singles', label: 'Singles' },
+            { value: 'doubles', label: 'Doubles' },
+            { value: 'mixed', label: 'Mixed Doubles' },
+          ]}
+        />
 
         <div>
           <label htmlFor="entry_fee" className="mb-1 block text-sm font-medium text-gray-700">
             Entry Fee (INR)
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+            <span className="pointer-events-none absolute left-3 top-2.5 text-gray-500">₹</span>
             <input
               {...register('entry_fee', { valueAsNumber: true })}
               type="number"
               step="0.01"
               min="0"
               placeholder="0.00"
-              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="max_participants"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Max Participants
-          </label>
-          <input
-            {...register('max_participants', { valueAsNumber: true })}
-            type="number"
-            min="2"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-            placeholder="No limit"
-          />
-        </div>
+        <Input
+          {...register('max_participants', { valueAsNumber: true })}
+          label="Max Participants"
+          type="number"
+          min="2"
+          placeholder="No limit"
+          leftIcon={<Users className="h-5 w-5" />}
+        />
       </div>
 
-      <div>
-        <label htmlFor="status" className="mb-1 block text-sm font-medium text-gray-700">
-          Status
-        </label>
-        <select
-          {...register('status')}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
-        >
-          <option value="draft">Draft</option>
-          <option value="open">Open for Registration</option>
-          <option value="closed">Closed</option>
-        </select>
-      </div>
+      <Select
+        {...register('status')}
+        label="Initial Status"
+        options={[
+          { value: 'draft', label: 'Draft (not visible to others)' },
+          { value: 'open', label: 'Open for Registration' },
+          { value: 'closed', label: 'Closed' },
+        ]}
+      />
 
       <div className="flex gap-4">
-        <button
+        <Button
           type="submit"
-          disabled={createTournament.isPending}
-          className="flex-1 rounded-lg bg-primary-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="primary"
+          size="lg"
+          isLoading={createTournament.isPending}
+          className="flex-1"
         >
-          {createTournament.isPending ? 'Creating...' : 'Create Tournament'}
-        </button>
+          Create Tournament
+        </Button>
       </div>
     </form>
   );

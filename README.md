@@ -4,6 +4,7 @@ A modern, real-time tournament management system built with Next.js, TypeScript,
 
 ## Features
 
+### Phase 1 (Core MVP)
 - ✅ **Auth & Profiles**: Email/password + magic link authentication
 - 🏆 **Tournament CRUD**: Create and manage tournaments
 - 👥 **Player Registration**: Singles and doubles registration
@@ -11,6 +12,14 @@ A modern, real-time tournament management system built with Next.js, TypeScript,
 - 🔴 **Live Scoreboards**: Real-time match updates via Supabase Realtime
 - 📱 **Mobile-first UI**: Responsive design with Tailwind CSS
 - ⚡ **Optimistic Updates**: React Query for fast, cached data
+
+### Phase 2 (Invitations)
+- ✉️ **Manual Participant Invites**: Add participants by email
+- 👤 **Placeholder Profiles**: Create temporary profiles for invited users
+- 🔗 **Secure Invite Links**: Token-based invitation acceptance
+- 📧 **Email Integration**: SendGrid or Resend for notifications
+- 🔄 **Profile Merging**: Automatic merge when invited user signs up
+- 📊 **Participant Management**: Dedicated page for organizers
 
 ## Tech Stack
 
@@ -127,6 +136,15 @@ npm run test         # Run tests
 npm run test:ui      # Run tests with UI
 ```
 
+## Phase 2: Participant Invitations
+
+See [PHASE2_INVITATIONS.md](./PHASE2_INVITATIONS.md) for detailed documentation on:
+- Manual participant management
+- Email invitation system
+- Placeholder profiles and merging
+- API endpoints and flows
+- Local testing instructions
+
 ## Deployment
 
 ### Deploy to Vercel
@@ -222,7 +240,13 @@ The Stripe integration is stubbed. To implement:
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ❌ | Stripe publishable key |
 | `STRIPE_SECRET_KEY` | ❌ | Stripe secret key (server-only) |
 | `STRIPE_WEBHOOK_SECRET` | ❌ | Stripe webhook secret |
+| `EMAIL_PROVIDER` | ⚠️ | Email provider (resend/sendgrid/console) |
+| `EMAIL_API_KEY` | ⚠️ | Email service API key |
+| `EMAIL_FROM` | ⚠️ | Sender email address |
+| `INVITE_TOKEN_EXPIRY_HOURS` | ❌ | Invitation expiry (default: 72) |
 | `NEXT_PUBLIC_APP_URL` | ❌ | Your app URL |
+
+⚠️ = Required for Phase 2 (Invitations)
 
 ## Troubleshooting
 

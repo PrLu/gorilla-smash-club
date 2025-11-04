@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Simplified Logo Mark - Just the gorilla icon -->
+  <defs>
+    <linearGradient id="flame-mark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ea580c;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="90" fill="#03045e" stroke="#00b4d8" stroke-width="4"/>
+  
+  <!-- Gorilla Head -->
+  <ellipse cx="100" cy="95" rx="45" ry="50" fill="#2d2d2d"/>
+  <ellipse cx="85" cy="90" rx="8" ry="10" fill="#fff"/>
+  <ellipse cx="115" cy="90" rx="8" ry="10" fill="#fff"/>
+  <ellipse cx="85" cy="92" rx="4" ry="5" fill="#000"/>
+  <ellipse cx="115" cy="92" rx="4" ry="5" fill="#000"/>
+  <path d="M 90 105 Q 100 110 110 105" stroke="#000" stroke-width="2" fill="none"/>
+  
+  <!-- Paddle -->
+  <ellipse cx="145" cy="60" rx="18" ry="22" fill="#84cc16" stroke="#65a30d" stroke-width="2"/>
+  <rect x="142" y="80" width="6" height="25" fill="#65a30d" rx="3"/>
+  <circle cx="140" cy="55" r="2" fill="#65a30d"/>
+  <circle cx="150" cy="55" r="2" fill="#65a30d"/>
+  <circle cx="145" cy="62" r="2" fill="#65a30d"/>
+</svg>
+
