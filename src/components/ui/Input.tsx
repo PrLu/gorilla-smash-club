@@ -37,16 +37,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const helperId = `${inputId}-helper`;
 
     const baseStyles =
-      'w-full rounded-lg border bg-white px-4 py-2 text-gray-900 transition-colors duration-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500';
+      'w-full rounded-lg border bg-white dark:bg-gray-800 px-4 py-2 text-gray-900 dark:text-gray-100 transition-colors duration-normal placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:text-gray-500';
 
     const stateStyles = error
       ? 'border-error-500 focus:border-error-500 focus:ring-error-500'
-      : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500';
+      : 'border-gray-300 dark:border-gray-600 focus:border-primary-500 focus:ring-primary-500';
 
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             {label}
             {required && <span className="ml-1 text-error-500" aria-label="required">*</span>}
           </label>

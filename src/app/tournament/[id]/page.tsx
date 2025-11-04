@@ -2,15 +2,19 @@
 
 import { FixturesViewer } from '@/components/FixturesViewer';
 import { RegistrationForm } from '@/components/RegistrationForm';
+import { GenerateFixturesButton } from '@/components/GenerateFixturesButton';
+import { TournamentStatusSelector } from '@/components/TournamentStatusSelector';
 import { Button, Card, CardContent, Skeleton } from '@/components/ui';
 import { useTournament, useTournamentRegistrations } from '@/lib/hooks/useTournament';
 import { useMatches } from '@/lib/hooks/useMatches';
 import { useUser } from '@/lib/useUser';
-import { useParams } from 'next/navigation';
+import { useArchiveTournament, useRestoreTournament } from '@/lib/hooks/useArchiveTournament';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, Play, Trophy, UserPlus, List } from 'lucide-react';
+import { Calendar, MapPin, Users, Play, Trophy, UserPlus, List, Archive, ArchiveRestore, Trash2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 /**
  * Tournament detail page with tabs
@@ -18,17 +22,44 @@ import { motion } from 'framer-motion';
  */
 export default function TournamentPage() {
   const params = useParams();
+  const router = useRouter();
   const tournamentId = params?.id as string;
   const { user } = useUser();
 
   const { data: tournament, isLoading: loadingTournament } = useTournament(tournamentId);
   const { data: matches, isLoading: loadingMatches } = useMatches(tournamentId);
   const { data: registrations } = useTournamentRegistrations(tournamentId);
+  const archiveTournament = useArchiveTournament();
+  const restoreTournament = useRestoreTournament();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'participants'>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
 
   const isOrganizer = user?.id === tournament?.organizer_id;
+  const isArchived = tournament?.status === 'archived';
+
+  const handleArchive = async () => {
+    if (!window.confirm('Archive this tournament? It will be moved to archived tournaments.')) {
+      return;
+    }
+
+    try {
+      await archiveTournament.mutateAsync(tournamentId);
+      toast.success('Tournament archived successfully');
+      router.push('/dashboard');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to archive tournament');
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      await restoreTournament.mutateAsync(tournamentId);
+      toast.success('Tournament restored successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to restore tournament');
+    }
+  };
 
   if (loadingTournament) {
     return (
@@ -65,6 +96,7 @@ export default function TournamentPage() {
     in_progress: { color: 'bg-primary-100 text-primary-800', label: 'In Progress' },
     completed: { color: 'bg-gray-200 text-gray-700', label: 'Completed' },
     cancelled: { color: 'bg-error-100 text-error-800', label: 'Cancelled' },
+    archived: { color: 'bg-gray-300 text-gray-600', label: 'Archived' },
   };
 
   const status = statusConfig[tournament.status];
@@ -76,7 +108,7 @@ export default function TournamentPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-700 p-8 text-white shadow-xl">
@@ -117,9 +149,19 @@ export default function TournamentPage() {
 
             <div className="flex items-center gap-2">
               <span className="h-5 w-5 flex-shrink-0 text-lg opacity-75">₹</span>
-              <div>
-                <div className="text-xs opacity-75">Entry Fee</div>
-                <div className="text-sm font-medium">₹{tournament.entry_fee}</div>
+              <div className="min-w-0">
+                <div className="text-xs opacity-75">Entry Fees</div>
+                {tournament.entry_fees && Object.keys(tournament.entry_fees).length > 0 ? (
+                  <div className="space-y-0.5">
+                    {Object.entries(tournament.entry_fees).map(([format, fee]: [string, any]) => (
+                      <div key={format} className="text-sm font-medium">
+                        <span className="capitalize">{format}:</span> ₹{fee}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm font-medium">₹{tournament.entry_fee}</div>
+                )}
               </div>
             </div>
 
@@ -156,20 +198,75 @@ export default function TournamentPage() {
 
           {isOrganizer && (
             <>
+              <Link href={`/tournament/${tournamentId}/edit`}>
+                <Button variant="secondary" leftIcon={<Edit className="h-5 w-5" />}>
+                  Edit Tournament
+                </Button>
+              </Link>
+
               <Link href={`/tournament/${tournamentId}/participants`}>
                 <Button variant="secondary" leftIcon={<Users className="h-5 w-5" />}>
                   Manage Participants
                 </Button>
               </Link>
 
-              <Link href={`/api/generate-fixtures?tournamentId=${tournamentId}`}>
-                <Button variant="primary" leftIcon={<Trophy className="h-5 w-5" />}>
-                  Generate Fixtures
+              <GenerateFixturesButton 
+                tournamentId={tournamentId}
+                hasExistingMatches={matches && matches.length > 0}
+                disabled={isArchived}
+              />
+
+              {/* Archive/Restore Button */}
+              {isArchived ? (
+                <Button
+                  variant="secondary"
+                  onClick={handleRestore}
+                  isLoading={restoreTournament.isPending}
+                  leftIcon={<ArchiveRestore className="h-5 w-5" />}
+                >
+                  Restore
                 </Button>
-              </Link>
+              ) : (
+                <Button
+                  variant="danger"
+                  onClick={handleArchive}
+                  isLoading={archiveTournament.isPending}
+                  leftIcon={<Archive className="h-5 w-5" />}
+                >
+                  Archive
+                </Button>
+              )}
             </>
           )}
         </div>
+
+        {/* Status Selector for Organizer */}
+        {isOrganizer && !isArchived && (
+          <div className="mb-6">
+            <TournamentStatusSelector
+              tournamentId={tournamentId}
+              currentStatus={tournament.status}
+            />
+          </div>
+        )}
+
+        {/* Archived Notice */}
+        {isArchived && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg bg-gray-100 border border-gray-300 p-4 dark:bg-gray-800 dark:border-gray-700">
+            <Archive className="h-5 w-5 text-gray-600" />
+            <div className="flex-1">
+              <p className="font-medium text-gray-900 dark:text-white">This tournament is archived</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Archived tournaments are read-only. Restore to make changes.
+              </p>
+            </div>
+            {isOrganizer && (
+              <Button variant="secondary" size="sm" onClick={handleRestore}>
+                Restore Tournament
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Registration Modal */}
         {showRegistration && (
@@ -225,15 +322,24 @@ export default function TournamentPage() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <Card padding="lg">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Tournament Details</h3>
-                <div className="grid gap-4 md:grid-cols-2">
+                <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Tournament Details</h3>
+                <div className="space-y-4">
                   <div>
-                    <span className="text-sm text-gray-600">Format:</span>
-                    <p className="font-medium text-gray-900">{tournament.format.charAt(0).toUpperCase() + tournament.format.slice(1)}</p>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Format(s):</span>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {(tournament.formats || [tournament.format]).map((fmt: string) => (
+                        <span
+                          key={fmt}
+                          className="rounded-lg bg-primary-100 px-3 py-1 text-sm font-medium text-primary-700 dark:bg-primary-900 dark:text-primary-300"
+                        >
+                          {fmt.charAt(0).toUpperCase() + fmt.slice(1)}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div>
-                    <span className="text-sm text-gray-600">Status:</span>
-                    <p className="font-medium text-gray-900">{status.label}</p>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{status.label}</p>
                   </div>
                 </div>
               </Card>

@@ -16,27 +16,32 @@ import { staggerContainer, staggerItem } from '@/lib/motion';
  */
 export default function DashboardPage() {
   const { user } = useUser();
-  const { data: allTournaments, isLoading: loadingAll } = useTournaments();
-  const { data: myTournaments, isLoading: loadingMy } = useMyTournaments();
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'completed' | 'archived'>('all');
+  
+  // My Tournaments - only shows active (open, in_progress)
+  const { data: myTournaments, isLoading: loadingMy } = useMyTournaments();
+  
+  // All Tournaments - includes all statuses based on filter
+  const includeArchived = filter === 'all' || filter === 'archived';
+  const { data: allTournaments, isLoading: loadingAll } = useTournaments(includeArchived);
 
   const filteredTournaments =
     filter === 'all'
-      ? allTournaments
+      ? allTournaments?.filter((t) => t.status !== 'archived')
       : allTournaments?.filter((t) => t.status === filter);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* My Tournaments Section (Organizer View) */}
         {user && (
           <section className="mb-12">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">My Tournaments</h1>
-                <p className="mt-1 text-gray-600">Manage your organized events</p>
-              </div>
+            <div>
+              <h1 className="font-display text-3xl font-bold text-gray-900">My Tournaments</h1>
+              <p className="mt-1 text-gray-700">Manage your organized events</p>
+            </div>
 
               <Button
                 variant="primary"
@@ -50,15 +55,25 @@ export default function DashboardPage() {
             {/* Create Tournament Form */}
             {showForm && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="mb-8"
               >
-                <Card padding="lg">
-                  <h2 className="mb-6 text-xl font-semibold text-gray-900">
-                    Create New Tournament
-                  </h2>
+                <Card padding="lg" className="border-2 border-primary-200 dark:border-primary-800">
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Create New Tournament
+                    </h2>
+                    <button
+                      onClick={() => setShowForm(false)}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      aria-label="Close form"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <TournamentForm />
                 </Card>
               </motion.div>
@@ -86,10 +101,13 @@ export default function DashboardPage() {
               </motion.div>
             ) : (
               <Card className="p-12 text-center">
-                <Trophy className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-                <p className="mb-4 text-gray-600">You haven't created any tournaments yet.</p>
+                <Trophy className="mx-auto mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" />
+                <p className="mb-4 text-gray-600 dark:text-gray-400">No active tournaments.</p>
+                <p className="mb-4 text-sm text-gray-500 dark:text-gray-500">
+                  Your draft, completed, and archived tournaments are in the "All Tournaments" section below.
+                </p>
                 <Button variant="primary" onClick={() => setShowForm(true)}>
-                  Create Your First Tournament
+                  Create New Tournament
                 </Button>
               </Card>
             )}
@@ -100,8 +118,8 @@ export default function DashboardPage() {
         <section>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">All Tournaments</h2>
-              <p className="mt-1 text-gray-600">Browse and join upcoming events</p>
+              <h2 className="font-display text-2xl font-bold text-gray-900">All Tournaments</h2>
+              <p className="mt-1 text-gray-700">Browse and join upcoming events</p>
             </div>
 
             {/* Filter Buttons */}
@@ -135,6 +153,13 @@ export default function DashboardPage() {
               >
                 Completed
               </Button>
+              <Button
+                variant={filter === 'archived' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setFilter('archived')}
+              >
+                Archived
+              </Button>
             </div>
           </div>
 
@@ -160,8 +185,8 @@ export default function DashboardPage() {
             </motion.div>
           ) : (
             <Card className="p-12 text-center">
-              <Trophy className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-              <p className="text-gray-600">
+              <Trophy className="mx-auto mb-4 h-16 w-16 text-gray-300 dark:text-gray-600" />
+              <p className="text-gray-600 dark:text-gray-400">
                 No {filter !== 'all' ? filter : ''} tournaments found.
               </p>
             </Card>

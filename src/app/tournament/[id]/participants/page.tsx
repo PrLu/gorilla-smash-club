@@ -76,6 +76,7 @@ export default function ParticipantsPage() {
           is_placeholder: false,
           is_team: true,
           status: reg.status,
+          category: reg.metadata?.category || 'doubles',
           rating: reg.metadata?.rating || player1?.player_rating,
           gender: reg.metadata?.gender || player1?.gender,
           partner_name: player2 ? `${player2.first_name} ${player2.last_name}` : 'Partner pending',
@@ -95,6 +96,7 @@ export default function ParticipantsPage() {
         is_placeholder: false,
         is_team: false,
         status: reg.status,
+        category: reg.metadata?.category || 'singles',
         rating: reg.metadata?.rating || reg.player?.player_rating,
         gender: reg.metadata?.gender || reg.player?.gender,
         invitation,
@@ -119,6 +121,7 @@ export default function ParticipantsPage() {
         is_placeholder: true,
         is_team: inv.metadata?.partner_email ? true : false,
         status: 'pending' as const,
+        category: inv.metadata?.category,
         rating: inv.metadata?.rating,
         gender: inv.metadata?.gender,
         partner_name: inv.metadata?.partner_display_name,
@@ -160,7 +163,7 @@ export default function ParticipantsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

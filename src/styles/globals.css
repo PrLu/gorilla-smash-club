@@ -7,6 +7,33 @@
     @apply bg-gray-50 text-gray-900 antialiased;
   }
 
+  /* Dark mode body styles */
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  /* Ensure text is always visible with proper contrast */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-white;
+  }
+
+  p {
+    @apply text-gray-700;
+  }
+
+  .dark p {
+    @apply text-gray-300;
+  }
+
+  /* Ensure proper text color inheritance */
+  * {
+    color: inherit;
+  }
+
   /* Focus visible styles for keyboard navigation */
   *:focus-visible {
     @apply outline-none ring-2 ring-primary-500 ring-offset-2;

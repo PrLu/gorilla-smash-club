@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select, Card } from '@/components/ui';
 import toast from 'react-hot-toast';
-import { Calendar, MapPin, Users, Trophy, DollarSign } from 'lucide-react';
+import { Calendar, MapPin, Users, Trophy } from 'lucide-react';
+import { useState } from 'react';
 
 interface TournamentFormData {
   title: string;
@@ -14,34 +15,63 @@ interface TournamentFormData {
   start_date: string;
   end_date: string;
   location: string;
-  format: 'singles' | 'doubles' | 'mixed';
-  entry_fee: number;
+  formats: string[];
+  entry_fees: { [key: string]: number }; // Format-specific fees
   max_participants: number | null;
   status: 'draft' | 'open' | 'closed';
 }
 
 /**
  * Enhanced tournament creation form using design system components
- * Includes validation, loading states, and better UX
+ * Now supports multiple format selection
  */
 export function TournamentForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const today = new Date().toISOString().split('T')[0];
+  // Get current system date dynamically (YYYY-MM-DD format)
+  const getCurrentDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm<TournamentFormData>({
     defaultValues: {
       status: 'draft',
-      entry_fee: 0,
-      start_date: today,
-      end_date: today,
+      entry_fees: { singles: 0, doubles: 0, mixed: 0 },
+      start_date: getCurrentDate(),
+      end_date: getCurrentDate(),
+      formats: ['singles'],
     },
   });
+
+  const selectedFormats = watch('formats') || [];
+  const entryFees = watch('entry_fees') || {};
+
+  const toggleFormat = (format: string) => {
+    const current = selectedFormats;
+    if (current.includes(format)) {
+      setValue('formats', current.filter((f) => f !== format));
+    } else {
+      setValue('formats', [...current, format]);
+    }
+  };
+
+  const updateEntryFee = (format: string, fee: number) => {
+    setValue('entry_fees', {
+      ...entryFees,
+      [format]: fee,
+    });
+  };
 
   const createTournament = useMutation({
     mutationFn: async (data: TournamentFormData) => {
@@ -50,10 +80,28 @@ export function TournamentForm() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Ensure at least one format selected
+      if (!data.formats || data.formats.length === 0) {
+        throw new Error('Please select at least one format');
+      }
+
+      // Calculate minimum entry fee (for backward compatibility)
+      const minFee = Math.min(...Object.values(data.entry_fees).filter(Boolean));
+
       const { data: tournament, error } = await supabase
         .from('tournaments')
         .insert({
-          ...data,
+          title: data.title,
+          description: data.description,
+          start_date: data.start_date,
+          end_date: data.end_date,
+          location: data.location,
+          formats: data.formats,
+          format: data.formats[0], // First format for backward compatibility
+          entry_fee: minFee || 0, // Minimum fee for backward compatibility
+          entry_fees: data.entry_fees, // Format-specific fees
+          max_participants: data.max_participants,
+          status: data.status,
           organizer_id: user.id,
         })
         .select()
@@ -89,14 +137,14 @@ export function TournamentForm() {
       />
 
       <div>
-        <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+        <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
           Description
         </label>
         <textarea
           {...register('description')}
           id="description"
           rows={4}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
           placeholder="Tell participants about your tournament..."
         />
       </div>
@@ -130,44 +178,87 @@ export function TournamentForm() {
         required
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Select
-          {...register('format', { required: true })}
-          label="Format"
-          required
-          options={[
-            { value: 'singles', label: 'Singles' },
-            { value: 'doubles', label: 'Doubles' },
-            { value: 'mixed', label: 'Mixed Doubles' },
-          ]}
-        />
-
-        <div>
-          <label htmlFor="entry_fee" className="mb-1 block text-sm font-medium text-gray-700">
-            Entry Fee (INR)
-          </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-2.5 text-gray-500">₹</span>
-            <input
-              {...register('entry_fee', { valueAsNumber: true })}
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+      {/* Multiple Format Selection */}
+      <div>
+        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Tournament Formats *
+          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(Select one or more)</span>
+        </label>
+        <div className="space-y-2">
+          {['singles', 'doubles', 'mixed'].map((format) => (
+            <label
+              key={format}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              <input
+                type="checkbox"
+                checked={selectedFormats.includes(format)}
+                onChange={() => toggleFormat(format)}
+                className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <div className="flex-1">
+                <div className="font-medium capitalize text-gray-900 dark:text-white">
+                  {format} {format === 'mixed' && 'Doubles'}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {format === 'singles' && 'Individual players compete'}
+                  {format === 'doubles' && 'Teams of 2 players (same gender)'}
+                  {format === 'mixed' && 'Teams of 2 players (mixed gender)'}
+                </p>
+              </div>
+            </label>
+          ))}
         </div>
-
-        <Input
-          {...register('max_participants', { valueAsNumber: true })}
-          label="Max Participants"
-          type="number"
-          min="2"
-          placeholder="No limit"
-          leftIcon={<Users className="h-5 w-5" />}
-        />
+        {selectedFormats.length === 0 && (
+          <p className="mt-1 text-sm text-error-600 dark:text-error-400">Please select at least one format</p>
+        )}
       </div>
+
+      {/* Entry Fees - One per Selected Format */}
+      {selectedFormats.length > 0 && (
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Entry Fees (INR)
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+              Set fee for each format
+            </span>
+          </label>
+          <div className="space-y-3">
+            {selectedFormats.map((format) => (
+              <div key={format} className="flex items-center gap-3">
+                <span className="w-24 text-sm font-medium capitalize text-gray-700 dark:text-gray-300">
+                  {format}:
+                </span>
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute left-3 top-2.5 text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={entryFees[format] || 0}
+                    onChange={(e) => updateEntryFee(format, parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            💡 Different formats can have different entry fees
+          </p>
+        </div>
+      )}
+
+      <Input
+        {...register('max_participants', { valueAsNumber: true })}
+        label="Max Participants"
+        type="number"
+        min="2"
+        placeholder="No limit"
+        leftIcon={<Users className="h-5 w-5" />}
+        helperText="Total participants across all formats"
+      />
 
       <Select
         {...register('status')}
@@ -186,6 +277,7 @@ export function TournamentForm() {
           size="lg"
           isLoading={createTournament.isPending}
           className="flex-1"
+          disabled={selectedFormats.length === 0}
         >
           Create Tournament
         </Button>

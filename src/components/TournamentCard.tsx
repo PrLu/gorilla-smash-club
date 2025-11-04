@@ -22,6 +22,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
     in_progress: { color: 'bg-primary-100 text-primary-800', label: 'In Progress' },
     completed: { color: 'bg-gray-200 text-gray-700', label: 'Completed' },
     cancelled: { color: 'bg-error-100 text-error-800', label: 'Cancelled' },
+    archived: { color: 'bg-gray-300 text-gray-600', label: 'Archived' },
   };
 
   const status = statusConfig[tournament.status];
@@ -86,7 +87,10 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
               <div className="flex items-center gap-2">
                 <UsersIcon className="h-4 w-4 flex-shrink-0 text-gray-400" />
                 <span>
-                  {tournament.format.charAt(0).toUpperCase() + tournament.format.slice(1)}
+                  {tournament.formats 
+                    ? tournament.formats.map((f: string) => f.charAt(0).toUpperCase() + f.slice(1)).join(', ')
+                    : tournament.format.charAt(0).toUpperCase() + tournament.format.slice(1)
+                  }
                   {tournament.participant_count !== undefined && 
                     ` • ${tournament.participant_count} participant${tournament.participant_count !== 1 ? 's' : ''}`
                   }
@@ -95,16 +99,28 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-              <div className="flex items-center gap-1 text-sm font-semibold text-primary-600">
-                <span className="text-lg">₹</span>
-                <span>{tournament.entry_fee}</span>
-              </div>
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              {/* Entry Fees */}
+              {tournament.entry_fees && Object.keys(tournament.entry_fees).length > 0 ? (
+                <div className="mb-3 space-y-1">
+                  {Object.entries(tournament.entry_fees).map(([format, fee]: [string, any]) => (
+                    <div key={format} className="flex items-center justify-between text-sm">
+                      <span className="capitalize text-gray-600">{format}:</span>
+                      <span className="font-semibold text-primary-600">₹{fee}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-3 flex items-center gap-1 text-sm font-semibold text-primary-600">
+                  <span className="text-lg">₹</span>
+                  <span>{tournament.entry_fee}</span>
+                </div>
+              )}
 
               {tournament.max_participants && (
                 <div className="flex items-center gap-1 text-xs text-gray-500">
                   <TrendingUp className="h-3 w-3" />
-                  <span>Max {tournament.max_participants}</span>
+                  <span>Max {tournament.max_participants} participants</span>
                 </div>
               )}
             </div>

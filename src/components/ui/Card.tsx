@@ -15,12 +15,12 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
  */
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ variant = 'default', padding = 'md', hoverable = false, className, children, ...props }, ref) => {
-    const baseStyles = 'rounded-xl bg-white transition-shadow duration-normal';
+    const baseStyles = 'rounded-xl bg-white dark:bg-gray-800 transition-shadow duration-normal';
 
     const variants = {
-      default: 'shadow',
-      elevated: 'shadow-lg',
-      bordered: 'border border-gray-200 shadow-sm',
+      default: 'shadow dark:shadow-gray-900/50',
+      elevated: 'shadow-lg dark:shadow-gray-900/50',
+      bordered: 'border border-gray-200 dark:border-gray-700 shadow-sm',
     };
 
     const paddings = {

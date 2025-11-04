@@ -15,6 +15,7 @@ interface ParticipantRowProps {
     is_placeholder?: boolean;
     is_team?: boolean;
     status: 'pending' | 'confirmed' | 'cancelled';
+    category?: string;
     rating?: string;
     gender?: string;
     partner_name?: string;
@@ -123,21 +124,29 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
             </span>
           </div>
           
-          {/* Display rating and gender if available */}
-          {(participant.rating || participant.gender) && (
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              {participant.rating && (
-                <span className="rounded bg-gray-100 px-2 py-0.5">
-                  Rating: {participant.rating}
-                </span>
-              )}
-              {participant.gender && (
-                <span className="rounded bg-gray-100 px-2 py-0.5">
-                  {participant.gender}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Display Division Info: Category, Rating, Gender */}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {participant.category && (
+              <div className="flex items-center gap-1 rounded-lg bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:bg-primary-900 dark:text-primary-300">
+                <span className="font-semibold">Category:</span>
+                <span className="capitalize">{participant.category}</span>
+              </div>
+            )}
+            
+            {participant.rating && (
+              <div className="flex items-center gap-1 rounded-lg bg-accent-50 px-3 py-1 text-xs font-medium text-accent-700 dark:bg-accent-900 dark:text-accent-300">
+                <span className="font-semibold">Rating:</span>
+                <span>{participant.rating}</span>
+              </div>
+            )}
+            
+            {participant.gender && (
+              <div className="flex items-center gap-1 rounded-lg bg-secondary-50 px-3 py-1 text-xs font-medium text-secondary-700 dark:bg-secondary-900 dark:text-secondary-300">
+                <span className="font-semibold">Gender:</span>
+                <span className="capitalize">{participant.gender}</span>
+              </div>
+            )}
+          </div>
 
           {/* Invitation Status */}
           {participant.invitation && StatusIcon && (
