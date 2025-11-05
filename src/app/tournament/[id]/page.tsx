@@ -4,6 +4,7 @@ import { FixturesViewer } from '@/components/FixturesViewer';
 import { RegistrationForm } from '@/components/RegistrationForm';
 import { GenerateFixturesButton } from '@/components/GenerateFixturesButton';
 import { TournamentStatusSelector } from '@/components/TournamentStatusSelector';
+import { FixtureGenerationModal, SystemGenerateOptions } from '@/components/FixtureGenerationModal';
 import { Button, Card, CardContent, Skeleton } from '@/components/ui';
 import { useTournament, useTournamentRegistrations } from '@/lib/hooks/useTournament';
 import { useMatches } from '@/lib/hooks/useMatches';
@@ -34,6 +35,7 @@ export default function TournamentPage() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'participants'>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
+  const [showFixtureModal, setShowFixtureModal] = useState(false);
 
   const isOrganizer = user?.id === tournament?.organizer_id;
   const isArchived = tournament?.status === 'archived';
@@ -59,6 +61,45 @@ export default function TournamentPage() {
     } catch (error: any) {
       toast.error(error.message || 'Failed to restore tournament');
     }
+  };
+
+  const handleSystemGenerate = async (options: SystemGenerateOptions) => {
+    try {
+      const { supabase } = await import('@/lib/supabaseClient');
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        toast.error('Please sign in again');
+        return;
+      }
+
+      const response = await fetch(`/api/tournaments/${tournamentId}/generate-fixtures-system`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(options),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(`Failed to generate fixtures: ${data.error}`);
+        return;
+      }
+
+      toast.success(`Fixtures generated! ${data.stats.totalMatches} matches created`);
+      setShowFixtureModal(false);
+      window.location.reload(); // Refresh to show new fixtures
+    } catch (err) {
+      console.error('Generate error:', err);
+      toast.error('Failed to generate fixtures');
+    }
+  };
+
+  const handleManualMode = () => {
+    router.push(`/tournament/${tournamentId}/fixtures/manual`);
   };
 
   if (loadingTournament) {
@@ -210,11 +251,14 @@ export default function TournamentPage() {
                 </Button>
               </Link>
 
-              <GenerateFixturesButton 
-                tournamentId={tournamentId}
-                hasExistingMatches={matches && matches.length > 0}
+              <Button
+                variant="primary"
+                leftIcon={<Trophy className="h-5 w-5" />}
+                onClick={() => setShowFixtureModal(true)}
                 disabled={isArchived}
-              />
+              >
+                Generate Fixtures
+              </Button>
 
               {/* Archive/Restore Button */}
               {isArchived ? (
@@ -382,6 +426,15 @@ export default function TournamentPage() {
             </Card>
           )}
         </div>
+
+        {/* Fixture Generation Modal */}
+        <FixtureGenerationModal
+          isOpen={showFixtureModal}
+          onClose={() => setShowFixtureModal(false)}
+          tournamentId={tournamentId}
+          onSystemGenerate={handleSystemGenerate}
+          onManualMode={handleManualMode}
+        />
       </div>
     </div>
   );

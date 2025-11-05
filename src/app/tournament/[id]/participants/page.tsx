@@ -8,12 +8,13 @@ import { useTournamentInvitations } from '@/lib/hooks/useInvitations';
 import { useUser } from '@/lib/useUser';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, Download, Users } from 'lucide-react';
+import { ArrowLeft, UserPlus, Download, Users, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { staggerContainer, staggerItem } from '@/lib/motion';
+import { TournamentBulkImportModal } from '@/components/TournamentBulkImportModal';
 
 /**
  * Participant management dashboard
@@ -34,6 +35,7 @@ export default function ParticipantsPage() {
     useTournamentInvitations(tournamentId);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   const isOrganizer = user?.id === tournament?.organizer_id;
 
@@ -182,11 +184,11 @@ export default function ParticipantsPage() {
 
           <div className="flex gap-2">
             <Button
-              variant="secondary"
-              leftIcon={<Download className="h-5 w-5" />}
-              onClick={() => toast('CSV export coming soon!')}
+              variant="ghost"
+              leftIcon={<Upload className="h-5 w-5" />}
+              onClick={() => setShowBulkImportModal(true)}
             >
-              <span className="hidden sm:inline">Export CSV</span>
+              <span className="hidden sm:inline">Import CSV</span>
             </Button>
 
             <Button
@@ -249,6 +251,17 @@ export default function ParticipantsPage() {
             />
           </motion.div>
         )}
+
+        {/* Bulk Import Modal */}
+        <TournamentBulkImportModal
+          isOpen={showBulkImportModal}
+          onClose={() => setShowBulkImportModal(false)}
+          onSuccess={() => {
+            refetchRegistrations();
+            setShowBulkImportModal(false);
+          }}
+          tournamentId={tournamentId}
+        />
 
         {/* Participants List */}
         <Card padding="lg">

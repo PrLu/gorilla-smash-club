@@ -20,9 +20,24 @@ interface FixturesViewerProps {
  */
 export function FixturesViewer({ matches, onMatchClick }: FixturesViewerProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [view, setView] = useState<'all' | 'pools' | 'knockout'>('all');
 
-  // Group matches by round
-  const matchesByRound = matches.reduce((acc, match) => {
+  // Separate pool and knockout matches
+  const poolMatches = matches.filter(m => m.match_type === 'pool');
+  const knockoutMatches = matches.filter(m => m.match_type === 'knockout' || !m.match_type);
+
+  // Group pool matches by court (pool name)
+  const matchesByPool = poolMatches.reduce((acc, match) => {
+    const poolName = match.court || 'Unknown Pool';
+    if (!acc[poolName]) acc[poolName] = [];
+    acc[poolName].push(match);
+    return acc;
+  }, {} as Record<string, Match[]>);
+
+  const pools = Object.keys(matchesByPool).sort();
+
+  // Group knockout matches by round
+  const matchesByRound = knockoutMatches.reduce((acc, match) => {
     if (!acc[match.round]) acc[match.round] = [];
     acc[match.round].push(match);
     return acc;
@@ -59,17 +74,84 @@ export function FixturesViewer({ matches, onMatchClick }: FixturesViewerProps) {
     );
   }
 
+  const hasPoolMatches = poolMatches.length > 0;
+  const hasKnockoutMatches = knockoutMatches.length > 0;
+
   return (
     <>
-      {/* Desktop View - Horizontal Rounds */}
-      <div className="hidden lg:block">
-        <div className="overflow-x-auto scrollbar-thin">
-          <motion.div
-            className="inline-flex min-w-full gap-6 p-4"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
+      {/* View Toggle (if both pool and knockout exist) */}
+      {hasPoolMatches && hasKnockoutMatches && (
+        <div className="mb-6 flex justify-center gap-2">
+          <button
+            onClick={() => setView('all')}
+            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+              view === 'all'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
           >
+            All Fixtures
+          </button>
+          <button
+            onClick={() => setView('pools')}
+            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+              view === 'pools'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            Pool Matches ({poolMatches.length})
+          </button>
+          <button
+            onClick={() => setView('knockout')}
+            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+              view === 'knockout'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            Knockout Rounds ({knockoutMatches.length})
+          </button>
+        </div>
+      )}
+
+      {/* Pool Matches View */}
+      {(view === 'all' || view === 'pools') && hasPoolMatches && (
+        <div className="mb-8">
+          <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">Pool Stage</h3>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {pools.map((poolName) => (
+              <Card key={poolName} padding="md">
+                <h4 className="mb-3 font-semibold text-primary-600 dark:text-primary-400">
+                  {poolName}
+                </h4>
+                <div className="space-y-2">
+                  {matchesByPool[poolName].map((match) => (
+                    <MatchCard key={match.id} match={match} onClick={() => handleMatchClick(match)} />
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Knockout Matches View */}
+      {(view === 'all' || view === 'knockout') && hasKnockoutMatches && (
+        <div>
+          <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">
+            {hasPoolMatches ? 'Knockout Stage' : 'Bracket'}
+          </h3>
+          
+          {/* Desktop View - Horizontal Rounds */}
+          <div className="hidden lg:block">
+            <div className="overflow-x-auto scrollbar-thin">
+              <motion.div
+                className="inline-flex min-w-full gap-6 p-4"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+              >
             {rounds.map((round) => (
               <motion.div
                 key={round}
@@ -94,31 +176,33 @@ export function FixturesViewer({ matches, onMatchClick }: FixturesViewerProps) {
                 ))}
               </motion.div>
             ))}
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Mobile View - Vertical List */}
-      <div className="lg:hidden">
-        <div className="space-y-6">
-          {rounds.map((round) => (
-            <div key={round}>
-              <h3 className="mb-3 rounded-lg bg-primary-50 px-4 py-2 font-semibold text-primary-900">
-                {getRoundName(round, rounds.length)}
-              </h3>
-              <div className="space-y-3">
-                {matchesByRound[round].map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    onClick={() => handleMatchClick(match)}
-                  />
-                ))}
-              </div>
+              </motion.div>
             </div>
-          ))}
+          </div>
+
+          {/* Mobile View - Vertical List */}
+          <div className="lg:hidden">
+            <div className="space-y-6">
+              {rounds.map((round) => (
+                <div key={round}>
+                  <h3 className="mb-3 rounded-lg bg-primary-50 px-4 py-2 font-semibold text-primary-900">
+                    {getRoundName(round, rounds.length)}
+                  </h3>
+                  <div className="space-y-3">
+                    {matchesByRound[round].map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        match={match}
+                        onClick={() => handleMatchClick(match)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Match Detail Modal */}
       <Modal
@@ -138,7 +222,11 @@ export function FixturesViewer({ matches, onMatchClick }: FixturesViewerProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">
-                    {selectedMatch.player1_id || selectedMatch.team1_id ? 'Player/Team 1' : 'TBD'}
+                    {selectedMatch.player1 
+                      ? `${selectedMatch.player1.first_name} ${selectedMatch.player1.last_name}`
+                      : selectedMatch.team1
+                      ? selectedMatch.team1.name
+                      : 'TBD'}
                   </span>
                   <span className="text-2xl font-bold text-gray-900">
                     {selectedMatch.score1 ?? '-'}
@@ -149,7 +237,11 @@ export function FixturesViewer({ matches, onMatchClick }: FixturesViewerProps) {
 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-gray-900">
-                    {selectedMatch.player2_id || selectedMatch.team2_id ? 'Player/Team 2' : 'TBD'}
+                    {selectedMatch.player2 
+                      ? `${selectedMatch.player2.first_name} ${selectedMatch.player2.last_name}`
+                      : selectedMatch.team2
+                      ? selectedMatch.team2.name
+                      : 'TBD'}
                   </span>
                   <span className="text-2xl font-bold text-gray-900">
                     {selectedMatch.score2 ?? '-'}
@@ -219,7 +311,11 @@ function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-900">
-            {match.player1_id || match.team1_id ? 'Player/Team 1' : 'TBD'}
+            {match.player1 
+              ? `${match.player1.first_name} ${match.player1.last_name}`
+              : match.team1
+              ? match.team1.name
+              : 'TBD'}
           </span>
           {match.score1 !== null && (
             <span className="text-xl font-bold text-gray-900">{match.score1}</span>
@@ -230,7 +326,11 @@ function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
 
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-gray-900">
-            {match.player2_id || match.team2_id ? 'Player/Team 2' : 'TBD'}
+            {match.player2 
+              ? `${match.player2.first_name} ${match.player2.last_name}`
+              : match.team2
+              ? match.team2.name
+              : 'TBD'}
           </span>
           {match.score2 !== null && (
             <span className="text-xl font-bold text-gray-900">{match.score2}</span>

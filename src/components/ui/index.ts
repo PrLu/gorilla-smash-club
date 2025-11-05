@@ -13,6 +13,9 @@ export type { ModalProps } from './Modal';
 export { Card, CardHeader, CardTitle, CardContent } from './Card';
 export type { CardProps } from './Card';
 
+export { Dropdown } from './Dropdown';
+export type { DropdownProps, DropdownItem } from './Dropdown';
+
 export { Skeleton, SkeletonCard, SkeletonAvatar } from './Skeleton';
 export type { SkeletonProps } from './Skeleton';
 

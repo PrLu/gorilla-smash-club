@@ -92,16 +92,16 @@ export function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={clsx(
-              'relative w-full rounded-2xl bg-white shadow-xl',
+              'relative w-full rounded-2xl bg-white shadow-xl dark:bg-gray-800',
               sizes[size]
             )}
             tabIndex={-1}
           >
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
                 {title && (
-                  <h2 id="modal-title" className="text-xl font-semibold text-gray-900">
+                  <h2 id="modal-title" className="text-xl font-semibold text-gray-900 dark:text-white">
                     {title}
                   </h2>
                 )}

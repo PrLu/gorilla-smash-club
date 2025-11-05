@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { User, LogOut, Menu, X, Moon, Sun } from 'lucide-react';
-import { Button, SkeletonAvatar } from '@/components/ui';
+import { Button, SkeletonAvatar, Dropdown } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,6 +115,23 @@ export function Header() {
               Tournaments
             </Link>
 
+            {user && (
+              <>
+                <Link
+                  href="/settings/admins"
+                  className="font-medium text-gray-700 transition-colors hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
+                >
+                  Admins
+                </Link>
+                <Link
+                  href="/settings/participants"
+                  className="font-medium text-gray-700 transition-colors hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400"
+                >
+                  Players
+                </Link>
+              </>
+            )}
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -132,24 +149,31 @@ export function Header() {
             {loading ? (
               <SkeletonAvatar />
             ) : user ? (
-              <>
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                  aria-label="View profile"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
-                    <User className="h-5 w-5" />
+              <Dropdown
+                trigger={
+                  <div className="flex items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
+                      <User className="h-5 w-5" />
+                    </div>
+                    <span className="hidden font-medium text-gray-700 dark:text-gray-300 lg:inline">
+                      {userName || user.email?.split('@')[0]}
+                    </span>
                   </div>
-                  <span className="hidden font-medium text-gray-700 dark:text-gray-300 lg:inline">
-                    {userName || user.email?.split('@')[0]}
-                  </span>
-                </Link>
-
-                <Button variant="ghost" size="sm" onClick={handleSignOut} leftIcon={<LogOut className="h-4 w-4" />}>
-                  <span className="hidden lg:inline">Sign Out</span>
-                </Button>
-              </>
+                }
+                items={[
+                  {
+                    label: 'Profile',
+                    icon: <User className="h-4 w-4" />,
+                    href: '/profile',
+                  },
+                  { divider: true },
+                  {
+                    label: 'Sign Out',
+                    icon: <LogOut className="h-4 w-4" />,
+                    onClick: handleSignOut,
+                  },
+                ]}
+              />
             ) : (
               <Button variant="primary" size="sm" onClick={() => router.push('/auth/signin')}>
                 Sign In
@@ -199,6 +223,21 @@ export function Header() {
 
                 {user ? (
                   <>
+                    <Link
+                      href="/settings/admins"
+                      className="block rounded-lg px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admins
+                    </Link>
+                    <Link
+                      href="/settings/participants"
+                      className="block rounded-lg px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Players
+                    </Link>
+                    <div className="my-2 border-t border-gray-200 dark:border-gray-700"></div>
                     <Link
                       href="/profile"
                       className="block rounded-lg px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"

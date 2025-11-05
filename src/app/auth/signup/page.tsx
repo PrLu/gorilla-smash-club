@@ -39,6 +39,22 @@ export default function SignUpPage() {
 
       if (profileError) {
         console.error('Profile creation error:', profileError);
+        toast.error('Failed to create profile. Please contact support.');
+        setLoading(false);
+        return;
+      }
+
+      // Assign participant role to new user (makes them a player by default)
+      const { error: roleError } = await supabase.from('user_roles').insert({
+        profile_id: data.user.id,
+        role: 'participant',
+        scope_type: 'global',
+        granted_by: data.user.id, // Self-granted during signup
+      });
+
+      if (roleError) {
+        console.error('Role assignment error:', roleError);
+        // Don't block signup if role assignment fails, but log it
       }
 
       toast.success('Account created! Please check your email to verify.');

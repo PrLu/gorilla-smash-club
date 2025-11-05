@@ -21,8 +21,15 @@ export interface Match {
   next_match_id: string | null;
   scheduled_at: string | null;
   court: string | null;
+  match_type?: 'pool' | 'knockout';
+  pool_id?: string | null;
   created_at: string;
   updated_at: string;
+  // Joined player/team data
+  player1?: { id: string; first_name: string; last_name: string } | null;
+  player2?: { id: string; first_name: string; last_name: string } | null;
+  team1?: { id: string; name: string } | null;
+  team2?: { id: string; name: string } | null;
 }
 
 /**
@@ -37,7 +44,13 @@ export function useMatches(tournamentId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('matches')
-        .select('*')
+        .select(`
+          *,
+          player1:players!matches_player1_id_fkey(id, first_name, last_name),
+          player2:players!matches_player2_id_fkey(id, first_name, last_name),
+          team1:teams!matches_team1_id_fkey(id, name),
+          team2:teams!matches_team2_id_fkey(id, name)
+        `)
         .eq('tournament_id', tournamentId)
         .order('round', { ascending: true })
         .order('bracket_pos', { ascending: true });
