@@ -6,35 +6,44 @@ import { recordAudit } from '@/lib/audit';
 const MAX_MATCHES_DELETE = 500; // Safety limit for replaceExisting
 
 /**
- * Group participants by division (category + rating + gender)
- * Returns object keyed by division string, value is array of participant IDs
+ * Group participants by division (category only)
+ * Returns object with division metadata and participant IDs
  */
-function groupByDivision(registrations: any[], isTeamFormat: boolean) {
-  const divisions: Record<string, string[]> = {};
+function groupByDivision(registrations: any[]) {
+  const divisions: Record<string, { 
+    category: string;
+    isTeamBased: boolean;
+    participantIds: string[];
+  }> = {};
 
   registrations.forEach((reg) => {
-    // Get category, rating, gender from metadata or player data
+    // Get category from metadata
     const category = reg.metadata?.category || 'singles';
-    const rating = reg.metadata?.rating || reg.player?.player_rating || 'open';
-    const gender = reg.metadata?.gender || reg.player?.gender || 'male';
 
-    // Create division key: "category_rating_gender"
-    const divisionKey = `${category}_${rating}_${gender}`;
+    // Create division key: just the category name
+    const divisionKey = category;
 
-    // Get participant ID (player or team)
-    const participantId = isTeamFormat ? reg.team?.id : reg.player?.id;
+    // Determine if this specific registration is team-based
+    const isThisTeamBased = category === 'doubles' || category === 'mixed';
+    
+    // Get participant ID based on category (not tournament format)
+    const participantId = isThisTeamBased ? reg.team?.id : reg.player?.id;
 
     if (participantId) {
       if (!divisions[divisionKey]) {
-        divisions[divisionKey] = [];
+        divisions[divisionKey] = {
+          category,
+          isTeamBased: isThisTeamBased,
+          participantIds: []
+        };
       }
-      divisions[divisionKey].push(participantId);
+      divisions[divisionKey].participantIds.push(participantId);
     }
   });
 
   // Filter out divisions with less than 2 participants
   Object.keys(divisions).forEach((key) => {
-    if (divisions[key].length < 2) {
+    if (divisions[key].participantIds.length < 2) {
       delete divisions[key];
     }
   });
@@ -163,10 +172,32 @@ export async function POST(
       );
     }
 
-    const isTeamFormat = tournament.format === 'doubles' || tournament.format === 'mixed';
+    // DEBUG: Log registration metadata to verify categories are present
+    console.log('=== FIXTURE GENERATION DEBUG ===');
+    console.log(`Total registrations: ${registrations.length}`);
+    registrations.forEach((reg, idx) => {
+      console.log(`Registration ${idx + 1}:`, {
+        id: reg.id,
+        player_id: reg.player_id,
+        team_id: reg.team_id,
+        metadata: reg.metadata,
+        category: reg.metadata?.category || 'NOT SET',
+      });
+    });
 
     // Group participants by category, rating, and gender
-    const groupedParticipants = groupByDivision(registrations, isTeamFormat);
+    // Each division now contains metadata about whether it's team-based
+    const groupedParticipants = groupByDivision(registrations);
+
+    console.log('Grouped participants by category:', Object.keys(groupedParticipants));
+    Object.entries(groupedParticipants).forEach(([key, data]) => {
+      console.log(`Category: ${key}`, {
+        isTeamBased: data.isTeamBased,
+        participantCount: data.participantIds.length,
+        participantIds: data.participantIds,
+      });
+    });
+    console.log('=== END DEBUG ===');
 
     if (Object.keys(groupedParticipants).length === 0) {
       return NextResponse.json(
@@ -208,8 +239,8 @@ export async function POST(
     let totalMatchesCreated = 0;
     let totalAutoAdvanced = 0;
 
-    for (const [divisionKey, participantIds] of Object.entries(groupedParticipants)) {
-      const [category, rating, gender] = divisionKey.split('_');
+    for (const [divisionKey, divisionData] of Object.entries(groupedParticipants)) {
+      const { category, isTeamBased, participantIds } = divisionData;
 
       // Generate fixtures for this division
       const fixtures = generateSingleElimFixtures(participantIds, tournamentId, {
@@ -230,19 +261,20 @@ export async function POST(
       }
 
       // Prepare matches for insertion (add division metadata)
+      // Use team IDs for doubles/mixed, player IDs for singles
       const matchesToInsert = fixtures.map((fixture) => ({
         tournament_id: fixture.tournament_id,
         round: fixture.round,
         bracket_pos: fixture.bracket_pos + totalMatchesCreated, // Offset for unique positions
-        player1_id: isTeamFormat ? null : fixture.player1_id,
-        player2_id: isTeamFormat ? null : fixture.player2_id,
-        team1_id: isTeamFormat ? fixture.player1_id : null,
-        team2_id: isTeamFormat ? fixture.player2_id : null,
+        player1_id: isTeamBased ? null : fixture.player1_id,
+        player2_id: isTeamBased ? null : fixture.player2_id,
+        team1_id: isTeamBased ? fixture.player1_id : null,
+        team2_id: isTeamBased ? fixture.player2_id : null,
         status: fixture.status,
-        winner_player_id: isTeamFormat ? null : fixture.winner_player_id,
-        winner_team_id: isTeamFormat ? fixture.winner_player_id : null,
-        // Store division info in court field temporarily (or add division column)
-        court: `${category.toUpperCase()} ${rating} ${gender.toUpperCase()}`,
+        winner_player_id: isTeamBased ? null : fixture.winner_player_id,
+        winner_team_id: isTeamBased ? fixture.winner_player_id : null,
+        // Store category in court field
+        court: category.toUpperCase(),
       }));
 
       // Insert matches for this division
@@ -281,13 +313,13 @@ export async function POST(
           supabase,
           divisionMatches,
           fixtures,
-          isTeamFormat
+          isTeamBased
         );
         totalAutoAdvanced += autoAdvanced;
       }
 
       divisionResults[divisionKey] = {
-        division: `${category} - ${rating} - ${gender}`,
+        division: category,
         participants: participantIds.length,
         matches: divisionMatches.length,
         autoAdvanced,
@@ -334,8 +366,16 @@ export async function POST(
       matchesCreated: totalMatchesCreated,
       autoAdvancedCount: totalAutoAdvanced,
       divisionsCreated: Object.keys(groupedParticipants).length,
+      categories: Object.keys(groupedParticipants),
       divisionBreakdown: divisionResults,
       matches: finalMatches,
+      debug: {
+        totalRegistrations: registrations.length,
+        categoriesFound: Object.keys(groupedParticipants),
+        participantsPerCategory: Object.fromEntries(
+          Object.entries(groupedParticipants).map(([key, data]) => [key, data.participantIds.length])
+        ),
+      },
     });
   } catch (error: any) {
     console.error('Generate fixtures error:', error);

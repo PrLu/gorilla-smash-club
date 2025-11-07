@@ -2,6 +2,7 @@
 
 import { useForm } from 'react-hook-form';
 import { useInviteParticipant } from '@/lib/hooks/useInviteParticipant';
+import { useCategories } from '@/lib/hooks/useCategories';
 import { Button, Input, Select, Card } from '@/components/ui';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
@@ -35,6 +36,7 @@ interface ManualParticipantFormProps {
  */
 export function ManualParticipantForm({ tournamentId, onSuccess }: ManualParticipantFormProps) {
   const inviteParticipant = useInviteParticipant();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
   const [searchingEmail, setSearchingEmail] = useState(false);
   const [userExists, setUserExists] = useState<boolean | null>(null);
   const [existingUserData, setExistingUserData] = useState<any>(null);
@@ -66,7 +68,9 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
   const partnerEmail = watch('partner_email');
   const sendInvite = watch('sendInvite');
   
-  const isDoublesOrMixed = category === 'doubles' || category === 'mixed';
+  // Check if selected category is team-based
+  const selectedCategory = categories?.find(cat => cat.name === category);
+  const isDoublesOrMixed = selectedCategory?.is_team_based || false;
 
   // Search for existing user when email changes
   useEffect(() => {
@@ -280,12 +284,16 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
             {...register('category', { required: 'Category is required' })}
             label="Category"
             required
-            options={[
-              { value: 'singles', label: 'Singles' },
-              { value: 'doubles', label: 'Doubles' },
-              { value: 'mixed', label: 'Mixed' },
-            ]}
+            options={
+              categoriesLoading
+                ? [{ value: '', label: 'Loading categories...' }]
+                : (categories || []).map(cat => ({
+                    value: cat.name,
+                    label: cat.display_name,
+                  }))
+            }
             error={errors.category?.message}
+            disabled={categoriesLoading}
           />
 
           <Select

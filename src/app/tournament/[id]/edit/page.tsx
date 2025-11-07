@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useTournament } from '@/lib/hooks/useTournament';
 import { useUpdateTournament } from '@/lib/hooks/useUpdateTournament';
+import { useCategories } from '@/lib/hooks/useCategories';
 import { Button, Input, Select, Card, Skeleton } from '@/components/ui';
 import { useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -32,6 +33,7 @@ export default function EditTournamentPage() {
   const tournamentId = params?.id as string;
 
   const { data: tournament, isLoading } = useTournament(tournamentId);
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
   const updateTournament = useUpdateTournament();
 
   const {
@@ -186,29 +188,38 @@ export default function EditTournamentPage() {
                 <span className="ml-2 text-xs text-gray-500">(Select one or more)</span>
               </label>
               <div className="space-y-2">
-                {['singles', 'doubles', 'mixed'].map((format) => (
-                  <label
-                    key={format}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedFormats.includes(format)}
-                      onChange={() => toggleFormat(format)}
-                      className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <div className="flex-1">
-                      <div className="font-medium capitalize text-gray-900">
-                        {format} {format === 'mixed' && 'Doubles'}
+                {categoriesLoading ? (
+                  <div className="text-center py-4 text-gray-500">Loading categories...</div>
+                ) : (categories || []).length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    No categories available. Please contact administrator.
+                  </div>
+                ) : (
+                  // Show all active categories from master data
+                  (categories || []).map((category) => (
+                    <label
+                      key={category.name}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedFormats.includes(category.name)}
+                        onChange={() => toggleFormat(category.name)}
+                        className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">
+                          {category.display_name}
+                        </div>
+                        {category.description && (
+                          <p className="text-sm text-gray-600">
+                            {category.description}
+                          </p>
+                        )}
                       </div>
-                      <p className="text-sm text-gray-600">
-                        {format === 'singles' && 'Individual players compete'}
-                        {format === 'doubles' && 'Teams of 2 players (same gender)'}
-                        {format === 'mixed' && 'Teams of 2 players (mixed gender)'}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+                    </label>
+                  ))
+                )}
               </div>
               {selectedFormats.length === 0 && (
                 <p className="mt-1 text-sm text-error-600">Please select at least one format</p>

@@ -3,6 +3,7 @@
 import { FixturesViewer } from '@/components/FixturesViewer';
 import { RegistrationForm } from '@/components/RegistrationForm';
 import { GenerateFixturesButton } from '@/components/GenerateFixturesButton';
+import { DeleteFixturesButton } from '@/components/DeleteFixturesButton';
 import { TournamentStatusSelector } from '@/components/TournamentStatusSelector';
 import { FixtureGenerationModal, SystemGenerateOptions } from '@/components/FixtureGenerationModal';
 import { Button, Card, CardContent, Skeleton } from '@/components/ui';
@@ -260,6 +261,14 @@ export default function TournamentPage() {
                 Generate Fixtures
               </Button>
 
+              {/* Delete Fixtures Button - only show when fixtures exist */}
+              {matches && matches.length > 0 && !isArchived && (
+                <DeleteFixturesButton
+                  tournamentId={tournamentId}
+                  variant="secondary"
+                />
+              )}
+
               {/* Archive/Restore Button */}
               {isArchived ? (
                 <Button
@@ -392,12 +401,31 @@ export default function TournamentPage() {
 
           {activeTab === 'fixtures' && (
             <div>
+              {/* Fixtures Header with Actions */}
+              {isOrganizer && !isArchived && matches && matches.length > 0 && (
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Tournament Fixtures ({matches.length} matches)
+                  </h3>
+                  <DeleteFixturesButton
+                    tournamentId={tournamentId}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </div>
+              )}
+
               {loadingMatches ? (
                 <div className="flex justify-center py-12">
                   <Skeleton width={600} height={400} />
                 </div>
               ) : (
-                <FixturesViewer matches={matches || []} />
+                <FixturesViewer 
+                  matches={matches || []} 
+                  canEditScores={isOrganizer}
+                  onScoreUpdated={() => window.location.reload()}
+                  tournamentId={tournamentId}
+                />
               )}
             </div>
           )}

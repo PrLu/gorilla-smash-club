@@ -82,11 +82,36 @@ export async function POST(
         }
 
         // Validate category (required for tournament registration)
-        if (!category || !['singles', 'doubles', 'mixed'].includes(category)) {
+        if (!category) {
           results.failed.push({
             email,
             full_name,
-            error: 'Category is required and must be: singles, doubles, or mixed'
+            error: 'Category is required'
+          });
+          continue;
+        }
+
+        // Check if category exists in master data
+        const { data: categoryCheck } = await supabaseAdmin
+          .from('categories')
+          .select('name, is_active')
+          .eq('name', category)
+          .single();
+
+        if (!categoryCheck) {
+          results.failed.push({
+            email,
+            full_name,
+            error: `Invalid category: ${category}. Please use a valid category from master data.`
+          });
+          continue;
+        }
+
+        if (!categoryCheck.is_active) {
+          results.failed.push({
+            email,
+            full_name,
+            error: `Category "${category}" is not currently active`
           });
           continue;
         }

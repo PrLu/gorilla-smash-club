@@ -21,3 +21,5 @@ export type { SkeletonProps } from './Skeleton';
 
 export { Toast } from './Toast';
 
+export { Switch } from './Switch';
+

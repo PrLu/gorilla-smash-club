@@ -1,11 +1,12 @@
 'use client';
 
 import { useUser } from '@/lib/useUser';
+import { useUserRole } from '@/lib/hooks/useUserRole';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Menu, X, Moon, Sun } from 'lucide-react';
+import { User, LogOut, Menu, X, Moon, Sun, Settings, Database } from 'lucide-react';
 import { Button, SkeletonAvatar, Dropdown } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
@@ -18,10 +19,12 @@ import { motion, AnimatePresence } from 'framer-motion';
  */
 export function Header() {
   const { user, loading } = useUser();
+  const { data: userRole } = useUserRole();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userName, setUserName] = useState<string>('');
+  const isAdminOrRoot = userRole === 'admin' || userRole === 'root';
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -166,6 +169,20 @@ export function Header() {
                     icon: <User className="h-4 w-4" />,
                     href: '/profile',
                   },
+                  ...(isAdminOrRoot ? [
+                    { divider: true },
+                    {
+                      label: 'Settings',
+                      icon: <Settings className="h-4 w-4" />,
+                      children: [
+                        {
+                          label: 'Master Data',
+                          icon: <Database className="h-4 w-4" />,
+                          href: '/settings/master-data',
+                        },
+                      ],
+                    },
+                  ] : []),
                   { divider: true },
                   {
                     label: 'Sign Out',
@@ -245,6 +262,20 @@ export function Header() {
                     >
                       Profile
                     </Link>
+                    {isAdminOrRoot && (
+                      <>
+                        <div className="mt-2 px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                          SETTINGS
+                        </div>
+                        <Link
+                          href="/settings/master-data"
+                          className="block rounded-lg px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          Master Data
+                        </Link>
+                      </>
+                    )}
                     <button
                       onClick={handleSignOut}
                       className="block w-full rounded-lg px-4 py-2 text-left font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"

@@ -51,7 +51,7 @@ export async function POST(
       }
     );
 
-    // Get confirmed registrations
+    // Get confirmed registrations with metadata
     const { data: registrations, error: regError } = await supabaseAdmin
       .from('registrations')
       .select(`
@@ -82,7 +82,36 @@ export async function POST(
         .eq('tournament_id', tournamentId);
     }
 
-    const participantIds = registrations.map(r => r.player?.id || r.team?.id).filter(Boolean);
+    // Group registrations by category for proper participant ID extraction
+    const participantsByCategory: Record<string, any[]> = {
+      singles: [],
+      doubles: [],
+      mixed: []
+    };
+
+    registrations.forEach(reg => {
+      const category = reg.metadata?.category || 'singles';
+      if (participantsByCategory[category]) {
+        const isTeamBased = category === 'doubles' || category === 'mixed';
+        const participantId = isTeamBased ? reg.team?.id : reg.player?.id;
+        if (participantId) {
+          participantsByCategory[category].push({
+            id: participantId,
+            registration: reg,
+            isTeamBased
+          });
+        }
+      }
+    });
+
+    // Flatten all participants for backward compatibility with current logic
+    const allParticipants = [
+      ...participantsByCategory.singles,
+      ...participantsByCategory.doubles,
+      ...participantsByCategory.mixed
+    ];
+    
+    const participantIds = allParticipants.map(p => p.id).filter(Boolean);
     
     // Apply seeding
     let seededParticipants = [...participantIds];
@@ -97,14 +126,38 @@ export async function POST(
       totalMatches: 0,
     };
 
+    // Check if there are mixed categories - if so, recommend using main generate-fixtures endpoint
+    const hasMultipleCategories = Object.values(participantsByCategory).filter(arr => arr.length > 0).length > 1;
+    
+    if (hasMultipleCategories) {
+      return NextResponse.json({
+        error: 'Mixed categories detected',
+        message: 'This tournament has participants in multiple categories (singles/doubles/mixed). Please use the advanced fixture generator for proper category-based divisions.',
+        hint: 'Use POST /api/tournaments/[id]/generate-fixtures instead',
+        categories: {
+          singles: participantsByCategory.singles.length,
+          doubles: participantsByCategory.doubles.length,
+          mixed: participantsByCategory.mixed.length,
+        }
+      }, { status: 400 });
+    }
+
+    // Determine the primary category and if it's team-based
+    const primaryCategory = participantsByCategory.singles.length > 0 ? 'singles' 
+      : participantsByCategory.doubles.length > 0 ? 'doubles' 
+      : 'mixed';
+    const isTeamBased = primaryCategory === 'doubles' || primaryCategory === 'mixed';
+
     // Handle different fixture types
     if (fixtureType === 'pool_knockout' && poolOptions) {
-      // Pool + Knockout format
-      stats = await generatePoolKnockout(
+      // Pool + Knockout format - ONLY create pool matches now
+      // Knockout will be generated after pool completion
+      stats = await generatePoolMatchesOnly(
         supabaseAdmin,
         tournamentId,
         seededParticipants,
-        poolOptions
+        poolOptions,
+        isTeamBased
       );
     } else if (fixtureType === 'single_elim') {
       // Single Elimination
@@ -116,11 +169,15 @@ export async function POST(
         tournament_id: fixture.tournament_id,
         round: fixture.round,
         bracket_pos: fixture.bracket_pos,
-        player1_id: fixture.player1_id,
-        player2_id: fixture.player2_id,
+        // Use team IDs for doubles/mixed, player IDs for singles
+        player1_id: isTeamBased ? null : fixture.player1_id,
+        player2_id: isTeamBased ? null : fixture.player2_id,
+        team1_id: isTeamBased ? fixture.player1_id : null,
+        team2_id: isTeamBased ? fixture.player2_id : null,
         status: fixture.status,
         match_type: 'knockout',
-        winner_player_id: fixture.winner_player_id,
+        winner_player_id: isTeamBased ? null : fixture.winner_player_id,
+        winner_team_id: isTeamBased ? fixture.winner_player_id : null,
       }));
 
       const { error: matchError } = await supabaseAdmin
@@ -154,13 +211,14 @@ export async function POST(
 }
 
 /**
- * Generate Pool + Knockout fixtures
+ * Generate Pool Matches Only (Knockout created later after pool completion)
  */
-async function generatePoolKnockout(
+async function generatePoolMatchesOnly(
   supabaseAdmin: any,
   tournamentId: string,
   participants: string[],
-  poolOptions: { numberOfPools: number; playersPerPool: number; advancePerPool: number }
+  poolOptions: { numberOfPools: number; playersPerPool: number; advancePerPool: number },
+  isTeamBased: boolean = false
 ) {
   const { numberOfPools, advancePerPool } = poolOptions;
 
@@ -203,10 +261,11 @@ async function generatePoolKnockout(
   const poolPlayersToInsert: any[] = [];
   pools.forEach((pool, poolIndex) => {
     const dbPool = createdPools[poolIndex];
-    pool.participants.forEach((playerId: string, position: number) => {
+    pool.participants.forEach((participantId: string, position: number) => {
       poolPlayersToInsert.push({
         pool_id: dbPool.id,
-        player_id: playerId,
+        player_id: isTeamBased ? null : participantId,
+        team_id: isTeamBased ? participantId : null,
         position: position + 1,
       });
     });
@@ -220,19 +279,21 @@ async function generatePoolKnockout(
 
   createdPools.forEach((dbPool, poolIndex) => {
     const pool = pools[poolIndex];
-    const playerIds = pool.participants;
+    const participantIds = pool.participants;
 
-    // Round-robin: every player vs every other player
-    for (let i = 0; i < playerIds.length; i++) {
-      for (let j = i + 1; j < playerIds.length; j++) {
+    // Round-robin: every participant vs every other participant
+    for (let i = 0; i < participantIds.length; i++) {
+      for (let j = i + 1; j < participantIds.length; j++) {
         matchesToInsert.push({
           tournament_id: tournamentId,
           pool_id: dbPool.id,
           match_type: 'pool',
           round: 1,
           bracket_pos: matchPosition++,
-          player1_id: playerIds[i],
-          player2_id: playerIds[j],
+          player1_id: isTeamBased ? null : participantIds[i],
+          player2_id: isTeamBased ? null : participantIds[j],
+          team1_id: isTeamBased ? participantIds[i] : null,
+          team2_id: isTeamBased ? participantIds[j] : null,
           status: 'pending',
           court: pool.name,
         });
@@ -242,38 +303,19 @@ async function generatePoolKnockout(
 
   const poolMatchCount = matchesToInsert.length;
 
-  // Generate knockout rounds (TBD placeholders)
-  const totalAdvancing = pools.reduce((sum, pool) => sum + pool.advanceCount, 0);
-  const knockoutRounds = Math.ceil(Math.log2(totalAdvancing));
-  let currentRoundSize = Math.pow(2, knockoutRounds) / 2;
-  let currentRound = 2;
+  // DON'T generate knockout rounds yet!
+  // They will be created dynamically after pool completion
+  // This ensures correct bracket structure based on actual qualifiers
 
-  while (currentRoundSize >= 1) {
-    for (let i = 0; i < currentRoundSize; i++) {
-      matchesToInsert.push({
-        tournament_id: tournamentId,
-        pool_id: null,
-        match_type: 'knockout',
-        round: currentRound,
-        bracket_pos: matchPosition++,
-        player1_id: null,
-        player2_id: null,
-        status: 'pending',
-        court: null,
-      });
-    }
-    currentRound++;
-    currentRoundSize = Math.floor(currentRoundSize / 2);
-  }
-
-  // Insert all matches
+  // Insert ONLY pool matches
   await supabaseAdmin.from('matches').insert(matchesToInsert);
 
   return {
     pools: createdPools.length,
     poolMatches: poolMatchCount,
-    knockoutMatches: matchesToInsert.length - poolMatchCount,
-    totalMatches: matchesToInsert.length,
+    knockoutMatches: 0,  // Will be created after pool completion
+    totalMatches: poolMatchCount,
+    message: 'Pool matches created. Knockout rounds will be generated after pool completion.',
   };
 }
 

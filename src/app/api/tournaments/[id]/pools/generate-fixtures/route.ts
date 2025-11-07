@@ -73,15 +73,37 @@ export async function POST(
       return NextResponse.json({ error: poolError.message }, { status: 400 });
     }
 
+    // Get tournament to determine if team-based
+    const { data: tournament } = await supabaseAdmin
+      .from('tournaments')
+      .select('format, formats')
+      .eq('id', tournamentId)
+      .single();
+
+    // Check if any pool contains teams by examining the first participant
+    let isTeamBased = false;
+    if (pools.length > 0 && pools[0].playerIds.length > 0) {
+      const firstParticipantId = pools[0].playerIds[0];
+      
+      // Check if this ID is a team
+      const { data: teamCheck } = await supabaseAdmin
+        .from('teams')
+        .select('id')
+        .eq('id', firstParticipantId)
+        .single();
+      
+      isTeamBased = !!teamCheck;
+    }
+
     // Create pool_players mappings
     const poolPlayersToInsert: any[] = [];
     pools.forEach((pool: any, poolIndex: number) => {
       const dbPool = createdPools[poolIndex];
-      pool.playerIds.forEach((playerId: string, position: number) => {
+      pool.playerIds.forEach((participantId: string, position: number) => {
         poolPlayersToInsert.push({
           pool_id: dbPool.id,
-          player_id: playerId,
-          team_id: null,
+          player_id: isTeamBased ? null : participantId,
+          team_id: isTeamBased ? participantId : null,
           position: position + 1,
         });
       });
@@ -105,19 +127,21 @@ export async function POST(
 
     createdPools.forEach((dbPool, poolIndex) => {
       const pool = pools[poolIndex];
-      const playerIds = pool.playerIds;
+      const participantIds = pool.playerIds;
 
-      // Generate round-robin: every player plays every other player
-      for (let i = 0; i < playerIds.length; i++) {
-        for (let j = i + 1; j < playerIds.length; j++) {
+      // Generate round-robin: every participant plays every other participant
+      for (let i = 0; i < participantIds.length; i++) {
+        for (let j = i + 1; j < participantIds.length; j++) {
           matchesToInsert.push({
             tournament_id: tournamentId,
             pool_id: dbPool.id,
             match_type: 'pool',
             round: 1, // Pool matches are round 1
             bracket_pos: matchPosition++,
-            player1_id: playerIds[i],
-            player2_id: playerIds[j],
+            player1_id: isTeamBased ? null : participantIds[i],
+            player2_id: isTeamBased ? null : participantIds[j],
+            team1_id: isTeamBased ? participantIds[i] : null,
+            team2_id: isTeamBased ? participantIds[j] : null,
             status: 'pending',
             court: pool.name, // Store pool name in court field
           });
@@ -125,38 +149,10 @@ export async function POST(
       }
     });
 
-    // Generate knockout rounds (placeholder matches for now)
-    // Calculate total players advancing
-    const totalAdvancing = pools.reduce((sum: number, pool: any) => sum + (pool.advanceCount || 2), 0);
+    // DON'T generate knockout rounds yet!
+    // They will be created dynamically after pool completion
     
-    if (totalAdvancing >= 2) {
-      const knockoutRounds = Math.ceil(Math.log2(totalAdvancing));
-      const knockoutSize = Math.pow(2, knockoutRounds);
-
-      // Generate placeholder knockout matches
-      let currentRound = 2; // Round 2+ are knockout rounds
-      let currentRoundMatches = knockoutSize / 2;
-
-      while (currentRoundMatches >= 1) {
-        for (let i = 0; i < currentRoundMatches; i++) {
-          matchesToInsert.push({
-            tournament_id: tournamentId,
-            pool_id: null,
-            match_type: 'knockout',
-            round: currentRound,
-            bracket_pos: matchPosition++,
-            player1_id: null, // TBD - will be filled from pool results
-            player2_id: null,
-            status: 'pending',
-            court: null,
-          });
-        }
-        currentRound++;
-        currentRoundMatches = Math.floor(currentRoundMatches / 2);
-      }
-    }
-
-    // Insert all matches
+    // Insert ONLY pool matches
     if (matchesToInsert.length > 0) {
       const { error: matchError } = await supabaseAdmin
         .from('matches')
@@ -169,11 +165,11 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: 'Fixtures generated successfully',
+      message: 'Pool matches created. Knockout rounds will be generated after pool completion.',
       stats: {
         pools: createdPools.length,
-        poolMatches: matchesToInsert.filter(m => m.match_type === 'pool').length,
-        knockoutMatches: matchesToInsert.filter(m => m.match_type === 'knockout').length,
+        poolMatches: matchesToInsert.length,
+        knockoutMatches: 0,  // Will be created dynamically
         totalMatches: matchesToInsert.length,
       },
     });

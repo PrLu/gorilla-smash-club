@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select, Card } from '@/components/ui';
+import { useCategories } from '@/lib/hooks/useCategories';
 import toast from 'react-hot-toast';
 import { Calendar, MapPin, Users, Trophy } from 'lucide-react';
 import { useState } from 'react';
@@ -28,6 +29,7 @@ interface TournamentFormData {
 export function TournamentForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
 
   // Get current system date dynamically (YYYY-MM-DD format)
   const getCurrentDate = () => {
@@ -83,6 +85,19 @@ export function TournamentForm() {
       // Ensure at least one format selected
       if (!data.formats || data.formats.length === 0) {
         throw new Error('Please select at least one format');
+      }
+
+      // Validate formats against active categories from master data
+      const { data: activeCategories } = await supabase
+        .from('categories')
+        .select('name')
+        .eq('is_active', true);
+
+      const validCategoryNames = activeCategories?.map(c => c.name) || ['singles', 'doubles', 'mixed'];
+      const invalidFormats = data.formats.filter(f => !validCategoryNames.includes(f));
+
+      if (invalidFormats.length > 0) {
+        throw new Error(`Invalid categories: ${invalidFormats.join(', ')}. Please refresh the page and select from available categories.`);
       }
 
       // Calculate minimum entry fee (for backward compatibility)
@@ -185,29 +200,38 @@ export function TournamentForm() {
           <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(Select one or more)</span>
         </label>
         <div className="space-y-2">
-          {['singles', 'doubles', 'mixed'].map((format) => (
-            <label
-              key={format}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <input
-                type="checkbox"
-                checked={selectedFormats.includes(format)}
-                onChange={() => toggleFormat(format)}
-                className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <div className="flex-1">
-                <div className="font-medium capitalize text-gray-900 dark:text-white">
-                  {format} {format === 'mixed' && 'Doubles'}
+          {categoriesLoading ? (
+            <div className="text-center py-4 text-gray-500">Loading categories...</div>
+          ) : (categories || []).length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              No categories available. Please contact administrator.
+            </div>
+          ) : (
+            // Show all active categories from master data
+            (categories || []).map((category) => (
+              <label
+                key={category.name}
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedFormats.includes(category.name)}
+                  onChange={() => toggleFormat(category.name)}
+                  className="h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {category.display_name}
+                  </div>
+                  {category.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {category.description}
+                    </p>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {format === 'singles' && 'Individual players compete'}
-                  {format === 'doubles' && 'Teams of 2 players (same gender)'}
-                  {format === 'mixed' && 'Teams of 2 players (mixed gender)'}
-                </p>
-              </div>
-            </label>
-          ))}
+              </label>
+            ))
+          )}
         </div>
         {selectedFormats.length === 0 && (
           <p className="mt-1 text-sm text-error-600 dark:text-error-400">Please select at least one format</p>

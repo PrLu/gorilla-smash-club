@@ -23,6 +23,13 @@ export interface Match {
   court: string | null;
   match_type?: 'pool' | 'knockout';
   pool_id?: string | null;
+  // Scoring fields
+  match_format?: 'single_set' | 'best_of_3' | 'best_of_5';
+  set_scores?: Array<{ set: number; score1: number; score2: number }>;
+  score_summary?: string | null;
+  completed_at?: string | null;
+  entered_by?: string | null;
+  score_history?: any[];
   created_at: string;
   updated_at: string;
   // Joined player/team data

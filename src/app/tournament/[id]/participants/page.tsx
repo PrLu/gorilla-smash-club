@@ -36,6 +36,7 @@ export default function ParticipantsPage() {
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const isOrganizer = user?.id === tournament?.organizer_id;
 
@@ -137,6 +138,16 @@ export default function ParticipantsPage() {
 
   // Combine both lists
   const participants = [...confirmedParticipants, ...pendingInvitations];
+
+  // Extract unique categories from participants
+  const availableCategories = Array.from(
+    new Set(participants.map(p => p.category).filter(Boolean))
+  ).sort();
+
+  // Filter participants by selected category
+  const filteredParticipants = selectedCategory === 'all'
+    ? participants
+    : participants.filter(p => p.category === selectedCategory);
 
   if (!isOrganizer) {
     return (
@@ -263,9 +274,53 @@ export default function ParticipantsPage() {
           tournamentId={tournamentId}
         />
 
+        {/* Category Filter */}
+        {availableCategories.length > 0 && (
+          <Card padding="md" className="mb-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-semibold text-gray-700">Filter by Category:</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  All ({participants.length})
+                </button>
+                {availableCategories.map((category) => {
+                  const count = participants.filter(p => p.category === category).length;
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        selectedCategory === category
+                          ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {category.charAt(0).toUpperCase() + category.slice(1)} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Participants List */}
         <Card padding="lg">
-          <h2 className="mb-6 text-xl font-semibold text-gray-900">Participants</h2>
+          <h2 className="mb-6 text-xl font-semibold text-gray-900">
+            Participants
+            {selectedCategory !== 'all' && (
+              <span className="ml-2 text-base font-normal text-gray-600">
+                - {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
+              </span>
+            )}
+          </h2>
 
           {loadingRegistrations ? (
             <div className="space-y-4">
@@ -281,6 +336,19 @@ export default function ParticipantsPage() {
                 Add Your First Participant
               </Button>
             </div>
+          ) : filteredParticipants.length === 0 ? (
+            <div className="py-16 text-center">
+              <Users className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <p className="mb-4 text-gray-600">
+                No participants found in {selectedCategory} category.
+              </p>
+              <Button 
+                variant="ghost" 
+                onClick={() => setSelectedCategory('all')}
+              >
+                Show All Participants
+              </Button>
+            </div>
           ) : (
             <motion.div
               className="space-y-3"
@@ -288,7 +356,7 @@ export default function ParticipantsPage() {
               initial="hidden"
               animate="visible"
             >
-              {participants.map((participant) => (
+              {filteredParticipants.map((participant) => (
                 <motion.div key={participant.id} variants={staggerItem}>
                   <ParticipantRow
                     participant={participant}
