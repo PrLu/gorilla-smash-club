@@ -65,13 +65,13 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
-        <h1 className="mb-8 text-center text-3xl font-bold text-gray-900">Sign Up</h1>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-950 dark:to-gray-900 px-4">
+      <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-8 shadow-lg">
+        <h1 className="mb-8 text-center text-3xl font-bold text-gray-900 dark:text-white">Sign Up</h1>
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <div>
-            <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Full Name
             </label>
             <input
@@ -79,13 +79,13 @@ export default function SignUpPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               placeholder="John Doe"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Email
             </label>
             <input
@@ -93,13 +93,13 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               placeholder="your@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Password
             </label>
             <input
@@ -108,29 +108,29 @@ export default function SignUpPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               placeholder="••••••••"
             />
-            <p className="mt-1 text-xs text-gray-500">Minimum 6 characters</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Minimum 6 characters</p>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-primary-600 py-2 font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-lg bg-primary-600 dark:bg-primary-500 py-2 font-semibold text-white transition-colors hover:bg-primary-700 dark:hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/auth/signin" className="text-sm text-primary-600 hover:text-primary-700">
+          <Link href="/auth/signin" className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
             Already have an account? Sign in
           </Link>
         </div>
 
         <div className="mt-4 text-center">
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-700">
+          <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             ← Back to home
           </Link>
         </div>

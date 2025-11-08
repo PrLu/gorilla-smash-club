@@ -66,9 +66,9 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
   };
 
   const registrationStatusConfig = {
-    pending: { label: 'Pending', color: 'bg-warning-100 text-warning-800' },
-    confirmed: { label: 'Confirmed', color: 'bg-success-100 text-success-800' },
-    cancelled: { label: 'Cancelled', color: 'bg-error-100 text-error-800' },
+    pending: { label: 'Pending', color: 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200' },
+    confirmed: { label: 'Confirmed', color: 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200' },
+    cancelled: { label: 'Cancelled', color: 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200' },
   };
 
   const inviteStatus = participant.invitation?.status;
@@ -80,28 +80,28 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -100 }}
-      className="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       {/* Left: Avatar + Info */}
       <div className="flex items-center gap-4">
         {/* Avatar */}
-        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300">
           <User className="h-6 w-6" />
         </div>
 
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h4 className="truncate font-semibold text-gray-900">
+            <h4 className="truncate font-semibold text-gray-900 dark:text-white">
               {participant.display_name || participant.email.split('@')[0]}
             </h4>
             {participant.is_team && (
-              <span className="flex-shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
+              <span className="flex-shrink-0 rounded-full bg-primary-100 dark:bg-primary-900 px-2 py-0.5 text-xs font-medium text-primary-700 dark:text-primary-300">
                 Team
               </span>
             )}
             {participant.is_placeholder && (
-              <span className="flex-shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+              <span className="flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                 Pending Signup
               </span>
             )}
@@ -109,13 +109,13 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
 
           {/* Partner Info for Teams */}
           {participant.is_team && participant.partner_name && (
-            <div className="mt-1 text-sm text-gray-600">
+            <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               Partner: {participant.partner_name}
               {participant.partner_email && ` (${participant.partner_email})`}
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <span className="truncate">{participant.email}</span>
             <span
               className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${registrationStatusConfig[participant.status].color}`}
@@ -150,7 +150,7 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
 
           {/* Invitation Status */}
           {participant.invitation && StatusIcon && (
-            <div className={`mt-1 flex items-center gap-1 text-xs ${statusConfig[inviteStatus!]?.color}`}>
+            <div className={`mt-1 flex items-center gap-1 text-xs ${statusConfig[inviteStatus!]?.color} dark:opacity-90`}>
               <StatusIcon className="h-3 w-3" />
               <span>
                 Invite: {inviteStatus}

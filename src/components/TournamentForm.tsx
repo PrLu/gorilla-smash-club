@@ -201,9 +201,9 @@ export function TournamentForm() {
         </label>
         <div className="space-y-2">
           {categoriesLoading ? (
-            <div className="text-center py-4 text-gray-500">Loading categories...</div>
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading categories...</div>
           ) : (categories || []).length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
               No categories available. Please contact administrator.
             </div>
           ) : (
@@ -254,7 +254,7 @@ export function TournamentForm() {
                   {format}:
                 </span>
                 <div className="relative flex-1">
-                  <span className="pointer-events-none absolute left-3 top-2.5 text-gray-500">₹</span>
+                  <span className="pointer-events-none absolute left-3 top-2.5 text-gray-500 dark:text-gray-400">₹</span>
                   <input
                     type="number"
                     step="0.01"
@@ -262,7 +262,7 @@ export function TournamentForm() {
                     value={entryFees[format] || 0}
                     onChange={(e) => updateEntryFee(format, parseFloat(e.target.value) || 0)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-4 text-gray-900 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-8 pr-4 text-gray-900 dark:text-gray-100 transition-colors focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>

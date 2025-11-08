@@ -426,19 +426,19 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
         <input type="hidden" {...register('role')} value="player" />
 
         {/* Send Invite Toggle */}
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               {...register('sendInvite')}
               type="checkbox"
-              className="mt-0.5 h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              className="mt-0.5 h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
             />
             <div className="flex-1">
-              <div className="flex items-center gap-2 font-medium text-gray-900">
+              <div className="flex items-center gap-2 font-medium text-gray-900 dark:text-white">
                 <Mail className="h-4 w-4" />
                 Send invitation email
               </div>
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 {userExists
                   ? 'Notify the user about being added to this tournament'
                   : 'Send a secure invitation link to create an account and join'}
@@ -449,9 +449,9 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
 
         {/* Info Box - New User */}
         {!sendInvite && userExists === false && (
-          <div className="flex gap-3 rounded-lg bg-warning-50 border border-warning-200 p-4">
-            <Info className="h-5 w-5 flex-shrink-0 text-warning-600" />
-            <div className="text-sm text-warning-800">
+          <div className="flex gap-3 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-700 p-4">
+            <Info className="h-5 w-5 flex-shrink-0 text-warning-600 dark:text-warning-400" />
+            <div className="text-sm text-warning-800 dark:text-warning-200">
               <p className="font-medium">No email will be sent</p>
               <p className="mt-1">
                 A placeholder account will be created, but the user won&apos;t receive an invitation link.
@@ -461,8 +461,8 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
         )}
 
         {/* Required Fields Notice */}
-        <div className="rounded-lg bg-primary-50 border border-primary-200 p-4">
-          <p className="text-sm text-primary-800">
+        <div className="rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-700 p-4">
+          <p className="text-sm text-primary-800 dark:text-primary-200">
             <strong>Required:</strong> All fields marked with * must be filled before submission.
             Category, Rating, and Gender are mandatory for tournament registration.
           </p>

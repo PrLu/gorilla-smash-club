@@ -4,7 +4,105 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: var(--custom-secondary-bg, #f9fafb);
+    color: var(--custom-primary-font, #111827);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Dark mode body styles */
+  .dark body {
+    background-color: var(--custom-dark-secondary-bg, #111827);
+    color: var(--custom-dark-primary-font, #f9fafb);
+  }
+
+  /* Headings use custom heading colors */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--custom-heading-font, #111827);
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: var(--custom-dark-heading-font, #ffffff);
+  }
+
+  /* Paragraphs use custom secondary font color */
+  p {
+    color: var(--custom-secondary-font, #4b5563);
+  }
+
+  .dark p {
+    color: var(--custom-dark-secondary-font, #d1d5db);
+  }
+
+  /* Ensure proper text color inheritance */
+  * {
+    color: inherit;
+  }
+
+  /* Focus visible styles for keyboard navigation */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
 
+@layer components {
+  /* Custom scrollbar */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Animation utilities */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+      to right,
+      #f3f4f6 0%,
+      #e5e7eb 20%,
+      #f3f4f6 40%,
+      #f3f4f6 100%
+    );
+    background-size: 1000px 100%;
+  }
+}
+
+/* Import custom colors CSS - MUST come after Tailwind layers to override properly */
+@import '../styles/custom-colors.css';

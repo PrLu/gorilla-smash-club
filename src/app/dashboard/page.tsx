@@ -32,15 +32,15 @@ export default function DashboardPage() {
       : allTournaments?.filter((t) => t.status === filter);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
       <div className="container mx-auto px-4 py-8">
         {/* My Tournaments Section (Organizer View) */}
         {user && (
           <section className="mb-12">
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold text-gray-900">My Tournaments</h1>
-              <p className="mt-1 text-gray-700">Manage your organized events</p>
+              <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white">My Tournaments</h1>
+              <p className="mt-1 text-gray-700 dark:text-gray-300">Manage your organized events</p>
             </div>
 
               <Button
@@ -118,8 +118,8 @@ export default function DashboardPage() {
         <section>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-display text-2xl font-bold text-gray-900">All Tournaments</h2>
-              <p className="mt-1 text-gray-700">Browse and join upcoming events</p>
+              <h2 className="font-display text-2xl font-bold text-gray-900 dark:text-white">All Tournaments</h2>
+              <p className="mt-1 text-gray-700 dark:text-gray-300">Browse and join upcoming events</p>
             </div>
 
             {/* Filter Buttons */}

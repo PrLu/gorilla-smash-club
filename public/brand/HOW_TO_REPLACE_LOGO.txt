@@ -1,0 +1,78 @@
+═══════════════════════════════════════════════════════════════
+   HOW TO REPLACE THE GORILLA SMASH CLUB LOGO
+═══════════════════════════════════════════════════════════════
+
+QUICK STEPS:
+-----------
+
+1. Save your Gorilla Smash Club logo as:
+   → logo.png  (recommended)
+   or
+   → logo.svg  (for vector graphics)
+
+2. Place it in THIS directory (public/brand/)
+   Replace the existing file
+
+3. Recommended image size:
+   → Width: 800-1200px
+   → Height: 400-600px
+   → Format: PNG with transparent background
+   → File size: Under 500KB
+
+4. After replacing:
+   → Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R)
+   → Logo will appear on all pages automatically
+
+═══════════════════════════════════════════════════════════════
+
+ALTERNATIVE METHOD (No File Access Needed):
+------------------------------------------
+
+1. Sign in to your account
+2. Go to: Settings → Appearance
+3. Click "Upload Logo"
+4. Select your logo image
+5. Click "Save Changes"
+
+Done! Your logo is now live across the entire website.
+
+═══════════════════════════════════════════════════════════════
+
+WHERE YOUR LOGO APPEARS:
+-----------------------
+
+✓ Header (top navigation bar)
+✓ Homepage hero section (large display)
+✓ Footer
+✓ Mobile menu
+✓ All pages throughout the site
+
+═══════════════════════════════════════════════════════════════
+
+FILE STRUCTURE:
+--------------
+
+public/brand/
+  ├── logo.png          ← Your FULL logo (REPLACE THIS)
+  ├── logo-mark.svg     ← Icon version (for favicons)
+  └── HOW_TO_REPLACE_LOGO.txt  ← This file
+
+═══════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING:
+---------------
+
+Logo not showing?
+→ Check filename is exactly "logo.png" or "logo.svg"
+→ Clear browser cache
+→ Try hard refresh (Ctrl+Shift+R)
+
+Logo blurry?
+→ Use larger image (2x size)
+→ Or use SVG format
+
+Need help?
+→ Check LOGO_REPLACEMENT_GUIDE.md for detailed instructions
+
+═══════════════════════════════════════════════════════════════
+

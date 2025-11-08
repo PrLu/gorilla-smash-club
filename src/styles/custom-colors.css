@@ -1,0 +1,132 @@
+/* Custom color CSS variables applied from appearance preferences */
+
+:root {
+  /* Default colors (will be overridden by JS when user customizes) */
+  --custom-primary-font: #111827;
+  --custom-secondary-font: #4b5563;
+  --custom-heading-font: #111827;
+  --custom-primary-bg: #ffffff;
+  --custom-secondary-bg: #f9fafb;
+  
+  /* Dark mode defaults */
+  --custom-dark-primary-font: #f9fafb;
+  --custom-dark-secondary-font: #d1d5db;
+  --custom-dark-heading-font: #ffffff;
+  --custom-dark-primary-bg: #111827;
+  --custom-dark-secondary-bg: #1f2937;
+}
+
+/* Apply custom colors globally to override Tailwind defaults */
+
+/* Main text elements */
+main, article, section, div {
+  /* Allow custom colors to cascade but don't override inline styles */
+}
+
+/* Headings - apply custom heading colors */
+.font-display,
+[class*="font-display"] {
+  color: var(--custom-heading-font) !important;
+}
+
+.dark .font-display,
+.dark [class*="font-display"] {
+  color: var(--custom-dark-heading-font) !important;
+}
+
+/* Override specific text color classes where custom colors should apply */
+.text-gray-900:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-primary-font) !important;
+}
+
+.dark .text-gray-900:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-dark-primary-font) !important;
+}
+
+.text-gray-700:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-primary-font) !important;
+}
+
+.dark .text-gray-700:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-dark-primary-font) !important;
+}
+
+.text-gray-600:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-secondary-font) !important;
+}
+
+.dark .text-gray-600:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-dark-secondary-font) !important;
+}
+
+.text-gray-500:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-secondary-font) !important;
+}
+
+.dark .text-gray-500:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-dark-secondary-font) !important;
+}
+
+.text-gray-400:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-secondary-font) !important;
+}
+
+.dark .text-gray-400:not([class*="hover:"]):not([class*="focus:"]):not(.no-custom) {
+  color: var(--custom-dark-secondary-font) !important;
+}
+
+/* Background colors */
+.bg-gray-50:not(.no-custom) {
+  background-color: var(--custom-secondary-bg) !important;
+}
+
+.dark .bg-gray-50:not(.no-custom) {
+  background-color: var(--custom-dark-secondary-bg) !important;
+}
+
+.bg-white:not(.no-custom) {
+  background-color: var(--custom-primary-bg) !important;
+}
+
+.dark .bg-white:not(.no-custom) {
+  background-color: var(--custom-dark-primary-bg) !important;
+}
+
+.bg-gray-900:not(.no-custom) {
+  background-color: var(--custom-dark-primary-bg) !important;
+}
+
+.dark .bg-gray-900:not(.no-custom) {
+  background-color: var(--custom-dark-primary-bg) !important;
+}
+
+.bg-gray-800:not(.no-custom) {
+  background-color: var(--custom-dark-secondary-bg) !important;
+}
+
+.dark .bg-gray-800:not(.no-custom) {
+  background-color: var(--custom-dark-secondary-bg) !important;
+}
+
+/* White text should remain white in light mode, use custom in dark */
+.text-white:not(.no-custom) {
+  color: white;
+}
+
+.dark .text-white:not(.no-custom) {
+  color: var(--custom-dark-heading-font) !important;
+}
+
+/* Helper classes for opting in/out */
+.use-custom-colors {
+  color: var(--custom-primary-font);
+}
+
+.dark .use-custom-colors {
+  color: var(--custom-dark-primary-font);
+}
+
+.no-custom {
+  /* Use this class to prevent custom color overrides */
+}
+

@@ -54,7 +54,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         <div className="relative">
           {leftIcon && (
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
               {leftIcon}
             </div>
           )}
@@ -79,20 +79,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           />
 
           {rightIcon && (
-            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
               {rightIcon}
             </div>
           )}
         </div>
 
         {error && (
-          <p id={errorId} className="mt-1 text-sm text-error-600" role="alert">
+          <p id={errorId} className="mt-1 text-sm text-error-600 dark:text-error-400" role="alert">
             {error}
           </p>
         )}
 
         {!error && helperText && (
-          <p id={helperId} className="mt-1 text-sm text-gray-500">
+          <p id={helperId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {helperText}
           </p>
         )}

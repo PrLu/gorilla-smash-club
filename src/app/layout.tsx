@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Poppins } from 'next/font/google';
 import './globals.css';
 import { ReactQueryProvider } from '@/lib/react-query-provider';
+import { AppearanceProvider } from '@/lib/AppearanceProvider';
 import { Toast } from '@/components/ui';
 import { Header } from '@/components/Header';
 
@@ -54,11 +55,13 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100`}>
         <ReactQueryProvider>
-          <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-            <Header />
-            <main className="flex-1">{children}</main>
-          </div>
-          <Toast />
+          <AppearanceProvider>
+            <div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+              <Header />
+              <main className="flex-1">{children}</main>
+            </div>
+            <Toast />
+          </AppearanceProvider>
         </ReactQueryProvider>
       </body>
     </html>

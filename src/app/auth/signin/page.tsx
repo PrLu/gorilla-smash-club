@@ -64,7 +64,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-white px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-white dark:from-primary-950 dark:to-gray-900 px-4">
       <motion.div
         variants={fadeIn}
         initial="hidden"
@@ -73,8 +73,8 @@ export default function SignInPage() {
       >
         <Card padding="lg" variant="elevated">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-            <p className="mt-2 text-gray-600">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back</h1>
+            <p className="mt-2 text-gray-600 dark:text-gray-400">Sign in to your account</p>
           </div>
 
           <form onSubmit={handleSignIn} className="space-y-4">
@@ -104,9 +104,9 @@ export default function SignInPage() {
           </form>
 
           <div className="my-6 flex items-center">
-            <div className="flex-1 border-t border-gray-300" />
-            <span className="px-4 text-sm text-gray-500">Or</span>
-            <div className="flex-1 border-t border-gray-300" />
+            <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />
+            <span className="px-4 text-sm text-gray-500 dark:text-gray-400">Or</span>
+            <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />
           </div>
 
           <Button
@@ -121,14 +121,14 @@ export default function SignInPage() {
           </Button>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-gray-600">Don&apos;t have an account? </span>
-            <Link href="/auth/signup" className="font-medium text-primary-600 hover:text-primary-700">
+            <span className="text-gray-600 dark:text-gray-400">Don&apos;t have an account? </span>
+            <Link href="/auth/signup" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">
               Sign up
             </Link>
           </div>
 
           <div className="mt-4 text-center">
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
+            <Link href="/" className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               ← Back to home
             </Link>
           </div>

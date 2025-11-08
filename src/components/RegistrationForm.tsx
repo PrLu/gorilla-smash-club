@@ -115,59 +115,59 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label htmlFor="first_name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="first_name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             First Name *
           </label>
           <input
             {...register('first_name', { required: 'First name is required' })}
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           />
           {errors.first_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.first_name.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.first_name.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="last_name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="last_name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Last Name *
           </label>
           <input
             {...register('last_name', { required: 'Last name is required' })}
             type="text"
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           />
           {errors.last_name && (
-            <p className="mt-1 text-sm text-red-600">{errors.last_name.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.last_name.message}</p>
           )}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div>
-          <label htmlFor="gender" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="gender" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Gender *
           </label>
           <select
             {...register('gender', { required: 'Gender is required' })}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Select gender</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
           {errors.gender && (
-            <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.gender.message}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="rating" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="rating" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Rating
           </label>
           <select
             {...register('rating')}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Select rating</option>
             <option value="<3.2">&lt;3.2</option>
@@ -179,21 +179,21 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
       </div>
 
       <div>
-        <label htmlFor="category" className="mb-1 block text-sm font-medium text-gray-700">
+        <label htmlFor="category" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
           Category *
         </label>
         <select
           {...register('category', { required: 'Category is required' })}
-          className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
         >
           <option value="singles">Singles</option>
           <option value="doubles">Doubles</option>
           <option value="mixed">Mixed Doubles</option>
         </select>
         {errors.category && (
-          <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.category.message}</p>
         )}
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {category === 'singles' && 'Individual competition'}
           {category === 'doubles' && 'Team of 2 players (same gender)'}
           {category === 'mixed' && 'Team of 2 players (mixed gender)'}
@@ -212,7 +212,7 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
               <input
                 {...register('partner_name')}
                 type="text"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
                 placeholder="Partner's full name"
               />
             </div>
@@ -223,7 +223,7 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
               <input
                 {...register('partner_email')}
                 type="email"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
                 placeholder="partner@example.com"
               />
               <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">

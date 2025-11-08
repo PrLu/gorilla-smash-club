@@ -2,11 +2,12 @@
 
 import { useUser } from '@/lib/useUser';
 import { useUserRole } from '@/lib/hooks/useUserRole';
+import { useAppearancePreferences } from '@/lib/hooks/useAppearancePreferences';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Menu, X, Moon, Sun, Settings, Database } from 'lucide-react';
+import { User, LogOut, Menu, X, Moon, Sun, Settings, Database, Palette } from 'lucide-react';
 import { Button, SkeletonAvatar, Dropdown } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
@@ -20,11 +21,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 export function Header() {
   const { user, loading } = useUser();
   const { data: userRole } = useUserRole();
+  const { data: appearance } = useAppearancePreferences();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userName, setUserName] = useState<string>('');
   const isAdminOrRoot = userRole === 'admin' || userRole === 'root';
+  
+  // Use custom logo if available, otherwise use the full featured logo
+  const logoUrl = appearance?.custom_logo_url || '/brand/logo.svg';
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -92,7 +97,7 @@ export function Header() {
           <Link href="/" className="flex items-center gap-3">
             <div className="relative h-10 w-10 flex-shrink-0">
               <Image
-                src="/brand/logo-mark.svg"
+                src={logoUrl}
                 alt="Gorilla Smash Club"
                 fill
                 className="object-contain"
@@ -100,10 +105,10 @@ export function Header() {
               />
             </div>
             <div className="hidden sm:block">
-              <div className="font-display text-xl font-bold leading-none text-primary-700 dark:text-primary-400">
-                Gorilla Smash Club
+              <div className="font-display text-xl font-bold leading-none text-blue-700 dark:text-blue-400">
+                GORILLA SMASH CLUB
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
+              <div className="text-xs font-semibold text-orange-600 dark:text-orange-400">
                 The Beast Mode of Pickleball
               </div>
             </div>
@@ -168,6 +173,11 @@ export function Header() {
                     label: 'Profile',
                     icon: <User className="h-4 w-4" />,
                     href: '/profile',
+                  },
+                  {
+                    label: 'Appearance',
+                    icon: <Palette className="h-4 w-4" />,
+                    href: '/settings/appearance',
                   },
                   ...(isAdminOrRoot ? [
                     { divider: true },
