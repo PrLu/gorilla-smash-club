@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import type { Match } from '@/lib/hooks/useMatches';
+import { getParticipantName } from '@/lib/hooks/useMatches';
 import { Card, Modal, Button } from '@/components/ui';
 import { Trophy, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -27,24 +28,37 @@ interface FixturesViewerProps {
 export function FixturesViewer({ matches, onMatchClick, canEditScores = false, onScoreUpdated, tournamentId }: FixturesViewerProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [scoringMatch, setScoringMatch] = useState<Match | null>(null);
-  const [view, setView] = useState<'all' | 'pools' | 'knockout' | 'standings'>('all');
+  const [view, setView] = useState<'all' | 'pools' | 'knockout' | 'standings' | 'pools_combined'>('pools_combined');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [advancing, setAdvancing] = useState(false);
 
-  // Extract unique categories from matches (stored in court field)
-  const categories = Array.from(new Set(matches.map(m => m.court).filter(Boolean))).sort();
-  const hasMultipleCategories = categories.length > 1;
+  // Extract unique master categories from matches (stored in court field)
+  // Court field format: "SINGLES - Pool A" or "SINGLES" or just category name
+  const extractCategory = (court: string | null) => {
+    if (!court) return null;
+    // Extract category before " - Pool" or just return as is
+    const parts = court.split(' - ');
+    return parts[0].trim();
+  };
 
-  // Filter matches by selected category
+  const allCategories = Array.from(
+    new Set(matches.map(m => extractCategory(m.court)).filter(Boolean))
+  ).sort();
+  const hasMultipleCategories = allCategories.length > 1;
+
+  // Filter matches by selected master category
   const categoryFilteredMatches = selectedCategory === 'all' 
     ? matches 
-    : matches.filter(m => m.court === selectedCategory);
+    : matches.filter(m => {
+        const matchCategory = extractCategory(m.court);
+        return matchCategory === selectedCategory;
+      });
 
   // Separate pool and knockout matches from filtered matches
   const poolMatches = categoryFilteredMatches.filter(m => m.match_type === 'pool');
   const knockoutMatches = categoryFilteredMatches.filter(m => m.match_type === 'knockout' || !m.match_type);
 
-  // Group pool matches by court (pool name)
+  // Group pool matches by pool name (extracted from court field)
   const matchesByPool = poolMatches.reduce((acc, match) => {
     const poolName = match.court || 'Unknown Pool';
     if (!acc[poolName]) acc[poolName] = [];
@@ -53,6 +67,12 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
   }, {} as Record<string, Match[]>);
 
   const pools = Object.keys(matchesByPool).sort();
+  
+  // Extract just the pool letter/name (e.g., "Pool A" from "SINGLES - Pool A")
+  const getPoolDisplayName = (fullPoolName: string) => {
+    const parts = fullPoolName.split(' - ');
+    return parts.length > 1 ? parts[1] : fullPoolName;
+  };
 
   // Group knockout matches by round
   const matchesByRound = knockoutMatches.reduce((acc, match) => {
@@ -143,19 +163,28 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
               >
                 All Categories ({matches.length})
               </button>
-              {categories.map((category) => {
-                const count = matches.filter(m => m.court === category).length;
+              {allCategories.map((category) => {
+                // Count unique participants (players/teams) for this category
+                const categoryMatches = matches.filter(m => extractCategory(m.court) === category);
+                const uniqueParticipants = new Set();
+                categoryMatches.forEach(m => {
+                  if (m.player1_id) uniqueParticipants.add(m.player1_id);
+                  if (m.player2_id) uniqueParticipants.add(m.player2_id);
+                  if (m.team1_id) uniqueParticipants.add(m.team1_id);
+                  if (m.team2_id) uniqueParticipants.add(m.team2_id);
+                });
+                
                 return (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`rounded-full px-5 py-2.5 font-semibold shadow-sm transition-all ${
+                    className={`rounded-full px-5 py-2.5 font-semibold shadow-sm transition-all capitalize ${
                       selectedCategory === category
                         ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
                         : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                     }`}
                   >
-                    {category} ({count})
+                    {category.toLowerCase()} ({uniqueParticipants.size})
                   </button>
                 );
               })}
@@ -238,19 +267,28 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
             >
               All Categories ({matches.length})
             </button>
-            {categories.map((category) => {
-              const count = matches.filter(m => m.court === category).length;
+            {allCategories.map((category) => {
+              // Count unique participants (players/teams) for this category
+              const categoryMatches = matches.filter(m => extractCategory(m.court) === category);
+              const uniqueParticipants = new Set();
+              categoryMatches.forEach(m => {
+                if (m.player1_id) uniqueParticipants.add(m.player1_id);
+                if (m.player2_id) uniqueParticipants.add(m.player2_id);
+                if (m.team1_id) uniqueParticipants.add(m.team1_id);
+                if (m.team2_id) uniqueParticipants.add(m.team2_id);
+              });
+              
               return (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`rounded-full px-5 py-2.5 font-semibold shadow-sm transition-all ${
+                  className={`rounded-full px-5 py-2.5 font-semibold shadow-sm transition-all capitalize ${
                     selectedCategory === category
                       ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-md'
                       : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                   }`}
                 >
-                  {category} ({count})
+                  {category.toLowerCase()} ({uniqueParticipants.size})
                 </button>
               );
             })}
@@ -262,24 +300,14 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
       {hasPoolMatches && (
         <div className="mb-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => setView('all')}
+            onClick={() => setView('pools_combined')}
             className={`rounded-lg px-4 py-2 font-medium transition-colors ${
-              view === 'all'
-                ? 'bg-primary-600 text-white'
+              view === 'pools_combined'
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
-            All Fixtures
-          </button>
-          <button
-            onClick={() => setView('pools')}
-            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
-              view === 'pools'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-            }`}
-          >
-            Pool Matches ({poolMatches.length})
+            🏊 Pool Overview (Recommended)
           </button>
           <button
             onClick={() => setView('standings')}
@@ -289,7 +317,17 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
-            Pool Standings
+            Standings Only
+          </button>
+          <button
+            onClick={() => setView('pools')}
+            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+              view === 'pools'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            Matches Only
           </button>
           {hasKnockoutMatches && (
             <button
@@ -300,22 +338,95 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
             >
-              Knockout Rounds ({knockoutMatches.length})
+              🏆 Knockout Bracket
             </button>
           )}
         </div>
       )}
 
-      {/* Pool Standings View */}
+      {/* Combined Pool Overview - Standings + Matches Together */}
+      {view === 'pools_combined' && hasPoolMatches && tournamentId && (
+        <div className="space-y-8">
+          {/* Check if all pools are complete */}
+          <PoolStandingsTable
+            tournamentId={tournamentId}
+            canAdvance={canEditScores}
+            onAdvanceClick={handleAdvanceQualified}
+            selectedCategory={selectedCategory}
+          />
+
+          {/* Pool Matches Below Standings - Organized by Category */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Pool Matches
+                {selectedCategory !== 'all' && ` - ${selectedCategory}`}
+              </h3>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {pools.length} {pools.length === 1 ? 'pool' : 'pools'}
+              </span>
+            </div>
+            
+            {pools.map((poolName) => {
+              const poolDisplayName = getPoolDisplayName(poolName);
+              const poolCategory = extractCategory(poolName);
+              const poolMatches = matchesByPool[poolName];
+              const completedMatches = poolMatches.filter(m => m.status === 'completed').length;
+              
+              return (
+                <Card key={poolName} padding="lg" className="border-l-4 border-l-primary-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="text-lg font-semibold text-primary-600 dark:text-primary-400">
+                        {poolDisplayName}
+                      </h4>
+                      {poolCategory && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Category: {poolCategory} • {completedMatches}/{poolMatches.length} matches completed
+                        </p>
+                      )}
+                    </div>
+                    {completedMatches === poolMatches.length ? (
+                      <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-3 py-1 text-xs font-semibold text-green-700 dark:text-green-300">
+                        ✓ Complete
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                        {completedMatches}/{poolMatches.length}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {poolMatches
+                      .sort((a, b) => {
+                        // Sort by status (pending first for easy scoring), then by match number
+                        if (a.status === 'pending' && b.status !== 'pending') return -1;
+                        if (a.status !== 'pending' && b.status === 'pending') return 1;
+                        return (a.bracket_pos || 0) - (b.bracket_pos || 0);
+                      })
+                      .map((match) => (
+                        <MatchCard key={match.id} match={match} onClick={() => handleMatchClick(match)} />
+                      ))}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Pool Standings View (Standalone) */}
       {view === 'standings' && hasPoolMatches && tournamentId && (
         <PoolStandingsTable
           tournamentId={tournamentId}
           canAdvance={canEditScores}
           onAdvanceClick={handleAdvanceQualified}
+          selectedCategory={selectedCategory}
         />
       )}
 
-      {/* Pool Matches View */}
+      {/* Pool Matches View (Standalone) */}
       {(view === 'all' || view === 'pools') && hasPoolMatches && (
         <div className="mb-8">
           <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">Pool Stage</h3>
@@ -336,8 +447,8 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
         </div>
       )}
 
-      {/* Knockout Matches View */}
-      {(view === 'all' || view === 'knockout') && hasKnockoutMatches && (
+      {/* Knockout Matches View - Also show in combined view if knockouts exist */}
+      {((view === 'all' || view === 'knockout' || (view === 'pools_combined' && hasKnockoutMatches)) && hasKnockoutMatches) && (
         <div>
           <h3 className="mb-4 text-xl font-bold text-gray-900 dark:text-white">
             {hasPoolMatches ? 'Knockout Stage' : 'Bracket'}
@@ -437,11 +548,7 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
                       ? 'font-bold text-green-600 dark:text-green-400'
                       : 'text-gray-900 dark:text-white'
                   }`}>
-                    {selectedMatch.player1 
-                      ? `${selectedMatch.player1.first_name} ${selectedMatch.player1.last_name}`
-                      : selectedMatch.team1
-                      ? selectedMatch.team1.name
-                      : 'TBD'}
+                    {getParticipantName(selectedMatch, 1)}
                   </span>
                   {selectedMatch.score_summary && (
                     <span className="text-lg font-bold text-gray-900 dark:text-white">
@@ -460,11 +567,7 @@ export function FixturesViewer({ matches, onMatchClick, canEditScores = false, o
                       ? 'font-bold text-green-600 dark:text-green-400'
                       : 'text-gray-900 dark:text-white'
                   }`}>
-                    {selectedMatch.player2 
-                      ? `${selectedMatch.player2.first_name} ${selectedMatch.player2.last_name}`
-                      : selectedMatch.team2
-                      ? selectedMatch.team2.name
-                      : 'TBD'}
+                    {getParticipantName(selectedMatch, 2)}
                   </span>
                 </div>
               </div>
@@ -542,11 +645,7 @@ function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
               ? 'font-bold text-green-600 dark:text-green-400'
               : 'text-gray-900 dark:text-white'
           }`}>
-            {match.player1 
-              ? `${match.player1.first_name} ${match.player1.last_name}`
-              : match.team1
-              ? match.team1.name
-              : 'TBD'}
+            {getParticipantName(match, 1)}
           </span>
           {match.score_summary && (
             <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -564,11 +663,7 @@ function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
               ? 'font-bold text-green-600 dark:text-green-400'
               : 'text-gray-900 dark:text-white'
           }`}>
-            {match.player2 
-              ? `${match.player2.first_name} ${match.player2.last_name}`
-              : match.team2
-              ? match.team2.name
-              : 'TBD'}
+            {getParticipantName(match, 2)}
           </span>
         </div>
       </div>

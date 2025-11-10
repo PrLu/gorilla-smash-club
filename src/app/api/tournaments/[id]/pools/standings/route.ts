@@ -1,170 +1,164 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-interface PlayerStanding {
-  playerId: string;
-  playerName: string;
-  wins: number;
-  losses: number;
-  matchesPlayed: number;
-  pointsFor: number;
-  pointsAgainst: number;
-  pointDifferential: number;
-  winPercentage: number;
-}
-
 /**
- * Calculate pool standings from completed matches
+ * Pool Standings Calculation API
+ * Computes standings for all pools in a tournament with proper tie-breaking
+ * 
+ * Tie-breaker rules (in order):
+ * 1. Matches won
+ * 2. Win percentage
+ * 3. Point differential
+ * 4. Points for
+ * 5. Head-to-head (if applicable)
  */
+
+// Disable caching for this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const tournamentId = params.id;
+  const tournamentId = params.id;
 
+  try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    console.log('🏊 Fetching pool standings for tournament:', tournamentId);
 
     // Get all pools for this tournament
     const { data: pools, error: poolsError } = await supabase
       .from('pools')
-      .select(`
-        id,
-        name,
-        advance_count,
-        status,
-        pool_players (
-          id,
-          player_id,
-          team_id,
-          position
-        )
-      `)
+      .select('*')
       .eq('tournament_id', tournamentId)
+      .order('category')
       .order('name');
 
+    console.log(`📊 Pools fetched: ${pools?.length || 0}`);
+    if (pools) {
+      pools.forEach(p => {
+        console.log(`  - ${p.name} (Category: ${p.category}, Size: ${p.size})`);
+      });
+    }
+
     if (poolsError) {
-      return NextResponse.json({ error: poolsError.message }, { status: 400 });
+      console.error('❌ Error fetching pools:', poolsError);
+      return NextResponse.json({ error: poolsError.message }, { status: 500 });
     }
 
     if (!pools || pools.length === 0) {
-      return NextResponse.json({ standings: [] });
+      console.log('⚠️ No pools found');
+      return NextResponse.json({ poolStandings: [] });
     }
 
-    // Get all pool matches with scores
-    const { data: matches, error: matchesError } = await supabase
-      .from('matches')
-      .select(`
-        id,
-        pool_id,
-        player1_id,
-        player2_id,
-        team1_id,
-        team2_id,
-        winner_player_id,
-        winner_team_id,
-        set_scores,
-        status,
-        player1:players!matches_player1_id_fkey(id, first_name, last_name),
-        player2:players!matches_player2_id_fkey(id, first_name, last_name),
-        team1:teams!matches_team1_id_fkey(id, name),
-        team2:teams!matches_team2_id_fkey(id, name)
-      `)
-      .eq('tournament_id', tournamentId)
-      .eq('match_type', 'pool')
-      .not('pool_id', 'is', null);
+    const poolStandings = [];
 
-    if (matchesError) {
-      return NextResponse.json({ error: matchesError.message }, { status: 400 });
-    }
+    for (const pool of pools) {
+      // Get all pool players
+      const { data: poolPlayers } = await supabase
+        .from('pool_players')
+        .select(`
+          *,
+          player:players(id, first_name, last_name),
+          team:teams(
+            id, 
+            name,
+            player1:players!teams_player1_id_fkey(id, first_name, last_name),
+            player2:players!teams_player2_id_fkey(id, first_name, last_name)
+          )
+        `)
+        .eq('pool_id', pool.id);
 
-    // Calculate standings for each pool
-    const poolStandings = pools.map(pool => {
-      const poolMatches = matches?.filter(m => m.pool_id === pool.id) || [];
-      const poolPlayersList = pool.pool_players || [];
-      
-      const standings: PlayerStanding[] = [];
+      // Get all matches for this pool
+      const { data: poolMatches } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('pool_id', pool.id);
 
-      // Get all unique players in this pool
-      poolPlayersList.forEach((pp: any) => {
-        const playerId = pp.player_id || pp.team_id;
-        if (!playerId) return;
+      // Calculate standings for each player/team
+      const standings = poolPlayers?.map((pp) => {
+        const participantId = pp.player_id || pp.team_id;
+        
+        // Format team names as "Player1 & Player2"
+        // Shows "Player1 & Partner" if second partner is missing
+        let participantName = 'Unknown';
+        if (pp.player) {
+          participantName = `${pp.player.first_name} ${pp.player.last_name}`;
+        } else if (pp.team) {
+          const player1Name = pp.team.player1 
+            ? `${pp.team.player1.first_name} ${pp.team.player1.last_name}`
+            : null;
+          const player2Name = pp.team.player2 
+            ? `${pp.team.player2.first_name} ${pp.team.player2.last_name}`
+            : null;
 
-        // Find this player's matches
-        const playerMatches = poolMatches.filter(m => 
-          m.player1_id === playerId || 
-          m.player2_id === playerId ||
-          m.team1_id === playerId ||
-          m.team2_id === playerId
-        );
+          if (player1Name && player2Name) {
+            participantName = `${player1Name} & ${player2Name}`;
+          } else if (player1Name) {
+            // Show "Player1 & Partner" to indicate it's a team event
+            participantName = `${player1Name} & Partner`;
+          } else if (player2Name) {
+            // Show "Partner & Player2" to indicate it's a team event
+            participantName = `Partner & ${player2Name}`;
+          } else {
+            participantName = pp.team.name || 'Team';
+          }
+        }
 
+        // Count wins and losses from matches
         let wins = 0;
         let losses = 0;
         let pointsFor = 0;
         let pointsAgainst = 0;
+        let matchesPlayed = 0;
 
-        playerMatches.forEach(match => {
+        poolMatches?.forEach((match) => {
           if (match.status !== 'completed') return;
 
-          const isPlayer1 = match.player1_id === playerId || match.team1_id === playerId;
-          const winnerId = match.winner_player_id || match.winner_team_id;
-          const didWin = winnerId === playerId;
+          const isPlayer1 = (pp.player_id && match.player1_id === pp.player_id) || 
+                           (pp.team_id && match.team1_id === pp.team_id);
+          const isPlayer2 = (pp.player_id && match.player2_id === pp.player_id) || 
+                           (pp.team_id && match.team2_id === pp.team_id);
 
-          if (didWin) {
+          if (!isPlayer1 && !isPlayer2) return;
+
+          matchesPlayed++;
+
+          const winnerId = match.winner_player_id || match.winner_team_id;
+          const isWinner = winnerId === participantId;
+
+          if (isWinner) {
             wins++;
           } else {
             losses++;
           }
 
-          // Calculate points from set scores
-          if (match.set_scores && Array.isArray(match.set_scores)) {
-            match.set_scores.forEach((set: any) => {
+          // Calculate points from score_summary if available
+          if (match.score_summary) {
+            const scores = match.score_summary.split(',')[0].split('-').map((s: string) => parseInt(s.trim()));
+            if (scores.length === 2) {
               if (isPlayer1) {
-                pointsFor += set.score1 || 0;
-                pointsAgainst += set.score2 || 0;
-              } else {
-                pointsFor += set.score2 || 0;
-                pointsAgainst += set.score1 || 0;
+                pointsFor += scores[0] || 0;
+                pointsAgainst += scores[1] || 0;
+              } else if (isPlayer2) {
+                pointsFor += scores[1] || 0;
+                pointsAgainst += scores[0] || 0;
               }
-            });
+            }
           }
         });
 
-        const matchesPlayed = wins + losses;
-        const winPercentage = matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0;
         const pointDifferential = pointsFor - pointsAgainst;
+        const winPercentage = matchesPlayed > 0 ? (wins / matchesPlayed) * 100 : 0;
 
-        // Get player name
-        const playerMatch = poolMatches.find(m => 
-          m.player1_id === playerId || m.player2_id === playerId ||
-          m.team1_id === playerId || m.team2_id === playerId
-        );
-
-        let playerName = 'Unknown';
-        if (playerMatch) {
-          if (playerMatch.player1_id === playerId && playerMatch.player1) {
-            playerName = `${playerMatch.player1.first_name} ${playerMatch.player1.last_name}`;
-          } else if (playerMatch.player2_id === playerId && playerMatch.player2) {
-            playerName = `${playerMatch.player2.first_name} ${playerMatch.player2.last_name}`;
-          } else if (playerMatch.team1_id === playerId && playerMatch.team1) {
-            playerName = playerMatch.team1.name;
-          } else if (playerMatch.team2_id === playerId && playerMatch.team2) {
-            playerName = playerMatch.team2.name;
-          }
-        }
-
-        standings.push({
-          playerId,
-          playerName,
+        return {
+          playerId: participantId,
+          playerName: participantName,
           wins,
           losses,
           matchesPlayed,
@@ -172,48 +166,65 @@ export async function GET(
           pointsAgainst,
           pointDifferential,
           winPercentage,
-        });
-      });
+        };
+      }) || [];
 
-      // Sort standings by:
-      // 1. Wins (descending)
-      // 2. Point differential (descending)
-      // 3. Points for (descending)
+      // Sort by tie-breaker rules
       standings.sort((a, b) => {
+        // 1. Wins (descending)
         if (b.wins !== a.wins) return b.wins - a.wins;
+        
+        // 2. Win percentage (descending)
+        if (b.winPercentage !== a.winPercentage) return b.winPercentage - a.winPercentage;
+        
+        // 3. Point differential (descending)
         if (b.pointDifferential !== a.pointDifferential) return b.pointDifferential - a.pointDifferential;
-        return b.pointsFor - a.pointsFor;
+        
+        // 4. Points for (descending)
+        if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
+        
+        // 5. Alphabetical as final tie-break
+        return a.playerName.localeCompare(b.playerName);
       });
 
-      // Add rank
-      const rankedStandings = standings.map((s, index) => ({
-        ...s,
+      // Assign ranks and determine who advances
+      const standingsWithRank = standings.map((standing, index) => ({
+        ...standing,
         rank: index + 1,
-        advances: index < (pool.advance_count || 2),
+        advances: index < pool.advance_count,
       }));
 
-      return {
+      // Check if all pool matches are complete
+      const allMatchesComplete = poolMatches?.every((m) => m.status === 'completed') || false;
+
+      poolStandings.push({
         poolId: pool.id,
         poolName: pool.name,
+        category: pool.category,
         advanceCount: pool.advance_count,
-        standings: rankedStandings,
-        isComplete: poolMatches.every(m => m.status === 'completed'),
-      };
-    });
+        standings: standingsWithRank,
+        isComplete: allMatchesComplete,
+        totalMatches: poolMatches?.length || 0,
+        completedMatches: poolMatches?.filter((m) => m.status === 'completed').length || 0,
+      });
+    }
 
     return NextResponse.json({
       success: true,
       poolStandings,
+      allPoolsComplete: poolStandings.every((ps) => ps.isComplete),
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
     });
-
   } catch (error: any) {
     console.error('Pool standings error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to calculate standings' },
+      { status: 500 }
+    );
   }
 }
-
-
-
-
-
-

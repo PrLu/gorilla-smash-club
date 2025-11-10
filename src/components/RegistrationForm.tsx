@@ -146,13 +146,13 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="gender" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Gender *
+            Gender
           </label>
           <select
-            {...register('gender', { required: 'Gender is required' })}
+            {...register('gender')}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           >
-            <option value="">Select gender</option>
+            <option value="">Not specified</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
@@ -169,7 +169,7 @@ export function RegistrationForm({ tournamentId, onSuccess }: RegistrationFormPr
             {...register('rating')}
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2 focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
           >
-            <option value="">Select rating</option>
+            <option value="">Not specified</option>
             <option value="<3.2">&lt;3.2</option>
             <option value="<3.6">&lt;3.6</option>
             <option value="<3.8">&lt;3.8</option>

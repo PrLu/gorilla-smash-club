@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Modal, Button, Input, Select } from '@/components/ui';
-import { Zap, Edit, Info } from 'lucide-react';
+import { Zap, Edit, Info, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FixtureGenerationModalProps {
@@ -11,6 +11,7 @@ interface FixtureGenerationModalProps {
   tournamentId: string;
   onSystemGenerate: (options: SystemGenerateOptions) => void;
   onManualMode: () => void;
+  onAutoGenerate?: () => void;
 }
 
 export interface SystemGenerateOptions {
@@ -32,8 +33,9 @@ export function FixtureGenerationModal({
   tournamentId,
   onSystemGenerate,
   onManualMode,
+  onAutoGenerate,
 }: FixtureGenerationModalProps) {
-  const [mode, setMode] = useState<'select' | 'system' | 'manual'>('select');
+  const [mode, setMode] = useState<'select' | 'system' | 'manual' | 'auto'>('select');
   
   // System generator form state
   const [fixtureType, setFixtureType] = useState<'single_elim' | 'double_elim' | 'pool_knockout'>('single_elim');
@@ -88,6 +90,49 @@ export function FixtureGenerationModal({
               Choose how you want to create fixtures for this tournament:
             </p>
 
+            {/* Automatic Multi-Category Generator Option (NEW - RECOMMENDED) */}
+            {onAutoGenerate && (
+              <button
+                onClick={() => {
+                  onAutoGenerate();
+                  handleReset();
+                  onClose();
+                }}
+                className="w-full rounded-lg border-2 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50 p-6 text-left transition-all hover:border-green-400 hover:shadow-lg dark:border-green-700 dark:from-green-900/20 dark:to-emerald-900/20 dark:hover:border-green-600"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 p-3 text-white shadow-lg">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Automatic (All Categories)
+                      </h3>
+                      <span className="rounded-full bg-green-500 px-2 py-0.5 text-xs font-bold text-white">
+                        RECOMMENDED
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-700 dark:text-gray-300 font-medium">
+                      One-click generation for ALL categories! System detects all registered categories 
+                      (Singles, Doubles, Mixed) and generates fixtures for each automatically.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-800 dark:text-green-300">
+                        ⚡ Fastest
+                      </span>
+                      <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-800 dark:text-green-300">
+                        🎯 All Categories
+                      </span>
+                      <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-800 dark:text-green-300">
+                        ✨ Smart Detection
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )}
+
             {/* System Generator Option */}
             <button
               onClick={() => setMode('system')}
@@ -99,21 +144,21 @@ export function FixtureGenerationModal({
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    System Generator (Automatic)
+                    System Generator (Custom Options)
                   </h3>
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Let the system automatically create fixtures based on your tournament format.
-                    Supports single elimination, double elimination, and pool-based tournaments.
+                    Configure specific options before generating. Choose fixture type, seeding strategy,
+                    and pool settings. Generates for all categories with your custom settings.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <span className="rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700 dark:bg-primary-800 dark:text-primary-300">
-                      Fast Setup
+                      Configurable
                     </span>
                     <span className="rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700 dark:bg-primary-800 dark:text-primary-300">
                       Pool Support
                     </span>
                     <span className="rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-700 dark:bg-primary-800 dark:text-primary-300">
-                      Auto Seeding
+                      Advanced
                     </span>
                   </div>
                 </div>

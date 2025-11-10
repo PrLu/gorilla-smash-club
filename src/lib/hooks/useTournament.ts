@@ -67,6 +67,8 @@ export function useTournamentRegistrations(tournamentId: string) {
 
       if (error) throw error;
       
+      console.log(`Fetched ${data?.length || 0} registrations for tournament ${tournamentId}`);
+      
       // Flatten the nested profile email into player object
       return data.map((reg: any) => ({
         ...reg,
@@ -88,5 +90,7 @@ export function useTournamentRegistrations(tournamentId: string) {
       }));
     },
     enabled: !!tournamentId,
+    staleTime: 0, // Always consider data stale - fetch fresh data
+    cacheTime: 0, // Don't cache - force fresh fetch
   });
 }

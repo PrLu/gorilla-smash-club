@@ -5,6 +5,7 @@ import { Modal, Button, Input } from '@/components/ui';
 import { Trophy, AlertCircle, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Match } from '@/lib/hooks/useMatches';
+import { getParticipantName } from '@/lib/hooks/useMatches';
 
 interface MatchScoringModalProps {
   isOpen: boolean;
@@ -44,13 +45,8 @@ export function MatchScoringModal({ isOpen, onClose, match, onScoreSaved }: Matc
     }
   }, [match]);
 
-  const player1Name = match?.player1 
-    ? `${match.player1.first_name} ${match.player1.last_name}`
-    : match?.team1?.name || 'Player 1';
-
-  const player2Name = match?.player2
-    ? `${match.player2.first_name} ${match.player2.last_name}`
-    : match?.team2?.name || 'Player 2';
+  const player1Name = match ? getParticipantName(match, 1) : 'Player 1';
+  const player2Name = match ? getParticipantName(match, 2) : 'Player 2';
 
   const handleFormatChange = (format: 'single_set' | 'best_of_3') => {
     setMatchFormat(format);

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Menu, X, Moon, Sun, Settings, Database, Palette } from 'lucide-react';
+import { User, LogOut, Menu, X, Moon, Sun, Settings, Database, Palette, Upload } from 'lucide-react';
 import { Button, SkeletonAvatar, Dropdown } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
@@ -190,6 +190,11 @@ export function Header() {
                           icon: <Database className="h-4 w-4" />,
                           href: '/settings/master-data',
                         },
+                        {
+                          label: 'Import/Export',
+                          icon: <Upload className="h-4 w-4" />,
+                          href: '/settings/import-export',
+                        },
                       ],
                     },
                   ] : []),
@@ -283,6 +288,13 @@ export function Header() {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           Master Data
+                        </Link>
+                        <Link
+                          href="/settings/import-export"
+                          className="block rounded-lg px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          Import/Export
                         </Link>
                       </>
                     )}

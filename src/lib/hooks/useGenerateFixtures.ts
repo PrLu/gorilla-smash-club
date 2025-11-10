@@ -3,10 +3,16 @@ import { supabase } from '@/lib/supabaseClient';
 
 interface GenerateFixturesParams {
   tournamentId: string;
-  fixtureType?: 'single_elim';
+  fixtureType?: 'single_elim' | 'pool_knockout';
   replaceExisting?: boolean;
   autoAdvanceByes?: boolean;
   seedOrder?: 'registered' | 'random';
+  poolOptions?: {
+    numberOfPools: number;
+    playersPerPool: number;
+    advancePerPool: number;
+  };
+  options?: any; // For passing all options from AutoGenerateFixturesButton
 }
 
 interface GenerateFixturesResponse {
@@ -39,6 +45,27 @@ export function useGenerateFixtures() {
         throw new Error('Not authenticated');
       }
 
+      // Prepare request body - support both old and new formats
+      const requestBody: any = {
+        fixture_type: options.fixtureType || 'single_elim',
+        fixtureType: options.fixtureType || 'single_elim', // New field name
+        replaceExisting: options.replaceExisting ?? false,
+        autoAdvanceByes: options.autoAdvanceByes ?? true,
+        seedOrder: options.seedOrder || 'registered',
+      };
+
+      // Add pool options if provided
+      if (options.poolOptions) {
+        requestBody.poolOptions = options.poolOptions;
+      }
+
+      // If options object provided directly (from AutoGenerateFixturesButton), merge it
+      if (params.options) {
+        Object.assign(requestBody, params.options);
+      }
+
+      console.log('Sending fixture generation request:', requestBody);
+
       const response = await fetch(
         `/api/tournaments/${tournamentId}/generate-fixtures`,
         {
@@ -47,12 +74,7 @@ export function useGenerateFixtures() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({
-            fixture_type: options.fixtureType || 'single_elim',
-            replaceExisting: options.replaceExisting ?? false,
-            autoAdvanceByes: options.autoAdvanceByes ?? true,
-            seedOrder: options.seedOrder || 'registered',
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 

@@ -2,15 +2,18 @@
 
 import { ManualParticipantForm } from '@/components/ManualParticipantForm';
 import { ParticipantRow } from '@/components/ParticipantRow';
+import { EditParticipantModal } from '@/components/EditParticipantModal';
 import { Button, Card, Skeleton } from '@/components/ui';
 import { useTournament, useTournamentRegistrations } from '@/lib/hooks/useTournament';
 import { useTournamentInvitations } from '@/lib/hooks/useInvitations';
 import { useUser } from '@/lib/useUser';
+import { useUserRole } from '@/lib/hooks/useUserRole';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, UserPlus, Download, Users, Upload } from 'lucide-react';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { staggerContainer, staggerItem } from '@/lib/motion';
@@ -24,6 +27,8 @@ export default function ParticipantsPage() {
   const params = useParams();
   const tournamentId = params?.id as string;
   const { user } = useUser();
+  const { data: userRole } = useUserRole();
+  const queryClient = useQueryClient();
 
   const { data: tournament, isLoading: loadingTournament } = useTournament(tournamentId);
   const {
@@ -37,25 +42,95 @@ export default function ParticipantsPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [editingParticipant, setEditingParticipant] = useState<any>(null);
 
   const isOrganizer = user?.id === tournament?.organizer_id;
+  const isAdminOrRoot = userRole === 'admin' || userRole === 'root';
+  const canEdit = isOrganizer || isAdminOrRoot;
 
-  const handleRemoveParticipant = async (participantId: string, type: 'registration' | 'invitation') => {
+    const handleRemoveParticipant = async (participantId: string, type: 'registration' | 'invitation') => {
     try {
+      console.log('Removing participant:', participantId, 'type:', type);
+      
       if (type === 'registration') {
-        const { error } = await supabase.from('registrations').delete().eq('id', participantId);
-        if (error) throw error;
-        refetchRegistrations();
+        // Delete registration only (NOT the user's profile or player record)
+        const { error, data } = await supabase
+          .from('registrations')
+          .delete()
+          .eq('id', participantId)
+          .select();
+        
+        console.log('Delete result:', { error, data, deletedCount: data?.length });
+        
+        if (error) {
+          console.error('Delete error:', error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          console.warn('No rows deleted - participant may not exist');
+          toast.error('Participant not found or already removed');
+          return;
+        }
+        
+        console.log('Registration deleted from database, now refreshing UI...');
+        
+        // Invalidate ALL related queries to force complete refresh
+        queryClient.removeQueries({ queryKey: ['registrations', tournamentId] }); // Remove from cache completely
+        queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+        queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
+        
+        // Force immediate refetch with fresh data
+        const result = await refetchRegistrations();
+        console.log('Refetch result - new count:', result.data?.length);
+        
+        console.log('✅ Cache invalidated and data refetched - participant should be removed from UI');
+        toast.success('✅ Participant removed from tournament');
       } else {
-        // Delete invitation
-        const { error } = await supabase.from('invitations').delete().eq('id', participantId);
-        if (error) throw error;
-        refetchInvitations();
+        // Delete invitation only
+        const { error, data } = await supabase
+          .from('invitations')
+          .delete()
+          .eq('id', participantId)
+          .select();
+        
+        console.log('Delete invitation result:', { error, data, deletedCount: data?.length });
+        
+        if (error) {
+          console.error('Delete error:', error);
+          throw error;
+        }
+        
+        if (!data || data.length === 0) {
+          console.warn('No rows deleted - invitation may not exist');
+          toast.error('Invitation not found or already removed');
+          return;
+        }
+        
+        console.log('Invitation deleted, refreshing UI...');
+        
+        // Invalidate queries
+        await queryClient.invalidateQueries({ queryKey: ['invitations', tournamentId] });
+        await queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+        
+        // Force refetch
+        await refetchInvitations();
+        
+        console.log('✅ Invitation removed from UI');
+        toast.success('✅ Invitation removed');
       }
-
-      toast.success('Participant removed');
+      
+      console.log('🎉 Removal complete - participant no longer listed in tournament or manage participants');
     } catch (err: any) {
-      toast.error('Failed to remove participant');
+      console.error('❌ Failed to remove participant:', err);
+      toast.error(`Failed to remove: ${err.message || 'Unknown error'}`);
+    }
+  };
+
+  const handleEditParticipant = (participantId: string) => {
+    const participant = confirmedParticipants.find((p: any) => p.id === participantId);
+    if (participant) {
+      setEditingParticipant(participant);
     }
   };
 
@@ -88,7 +163,10 @@ export default function ParticipantsPage() {
         };
       }
 
-      // Singles registration
+      // Singles or doubles/mixed without team
+      const category = reg.metadata?.category || 'singles';
+      const isTeamCategory = category === 'doubles' || category === 'mixed';
+      
       return {
         id: reg.id,
         type: 'registration' as const,
@@ -97,11 +175,14 @@ export default function ParticipantsPage() {
           ? `${reg.player.first_name} ${reg.player.last_name}`
           : undefined,
         is_placeholder: false,
-        is_team: false,
+        is_team: isTeamCategory,
         status: reg.status,
-        category: reg.metadata?.category || 'singles',
+        category: category,
         rating: reg.metadata?.rating || reg.player?.player_rating,
         gender: reg.metadata?.gender || reg.player?.gender,
+        // Include partner info from metadata for doubles/mixed
+        partner_name: isTeamCategory ? reg.metadata?.partner_display_name : undefined,
+        partner_email: isTeamCategory ? reg.metadata?.partner_email : undefined,
         invitation,
       };
     }) || [];
@@ -139,10 +220,19 @@ export default function ParticipantsPage() {
   // Combine both lists
   const participants = [...confirmedParticipants, ...pendingInvitations];
 
-  // Extract unique categories from participants
+  // Extract unique categories from participants (recalculated on every render)
   const availableCategories = Array.from(
     new Set(participants.map(p => p.category).filter(Boolean))
   ).sort();
+
+  // Calculate real-time counts per category
+  const categoryCounts = availableCategories.reduce((acc, category) => {
+    acc[category] = participants.filter(p => p.category === category).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  console.log('Current participants:', participants.length);
+  console.log('Categories with counts:', categoryCounts);
 
   // Filter participants by selected category
   const filteredParticipants = selectedCategory === 'all'
@@ -274,6 +364,19 @@ export default function ParticipantsPage() {
           tournamentId={tournamentId}
         />
 
+        {/* Edit Participant Modal */}
+        {editingParticipant && (
+          <EditParticipantModal
+            isOpen={!!editingParticipant}
+            onClose={() => setEditingParticipant(null)}
+            participant={editingParticipant}
+            onSuccess={() => {
+              refetchRegistrations();
+              setEditingParticipant(null);
+            }}
+          />
+        )}
+
         {/* Category Filter */}
         {availableCategories.length > 0 && (
           <Card padding="md" className="mb-6">
@@ -291,7 +394,8 @@ export default function ParticipantsPage() {
                   All ({participants.length})
                 </button>
                 {availableCategories.map((category) => {
-                  const count = participants.filter(p => p.category === category).length;
+                  // Use pre-calculated count from categoryCounts (always fresh)
+                  const count = categoryCounts[category] || 0;
                   return (
                     <button
                       key={category}
@@ -361,6 +465,8 @@ export default function ParticipantsPage() {
                   <ParticipantRow
                     participant={participant}
                     onRemove={(id) => handleRemoveParticipant(id, participant.type)}
+                    onEdit={canEdit ? handleEditParticipant : undefined}
+                    canEdit={canEdit}
                   />
                 </motion.div>
               ))}

@@ -1,8 +1,10 @@
 'use client';
 
 import { FixturesViewer } from '@/components/FixturesViewer';
+import { KnockoutsViewer } from '@/components/KnockoutsViewer';
 import { RegistrationForm } from '@/components/RegistrationForm';
 import { GenerateFixturesButton } from '@/components/GenerateFixturesButton';
+import { AutoGenerateFixturesButton } from '@/components/AutoGenerateFixturesButton';
 import { DeleteFixturesButton } from '@/components/DeleteFixturesButton';
 import { TournamentStatusSelector } from '@/components/TournamentStatusSelector';
 import { FixtureGenerationModal, SystemGenerateOptions } from '@/components/FixtureGenerationModal';
@@ -34,12 +36,18 @@ export default function TournamentPage() {
   const archiveTournament = useArchiveTournament();
   const restoreTournament = useRestoreTournament();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'participants'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'participants' | 'knockouts'>('overview');
   const [showRegistration, setShowRegistration] = useState(false);
   const [showFixtureModal, setShowFixtureModal] = useState(false);
+  const [showAutoGenerate, setShowAutoGenerate] = useState(false);
 
   const isOrganizer = user?.id === tournament?.organizer_id;
   const isArchived = tournament?.status === 'archived';
+  
+  const handleAutoGenerate = () => {
+    setShowAutoGenerate(true);
+    setShowFixtureModal(false);
+  };
 
   const handleArchive = async () => {
     if (!window.confirm('Archive this tournament? It will be moved to archived tournaments.')) {
@@ -146,6 +154,7 @@ export default function TournamentPage() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: List },
     { id: 'fixtures', label: 'Fixtures', icon: Trophy },
+    { id: 'knockouts', label: 'Knockouts', icon: Trophy },
     { id: 'participants', label: 'Participants', icon: Users },
   ] as const;
 
@@ -430,26 +439,91 @@ export default function TournamentPage() {
             </div>
           )}
 
+          {activeTab === 'knockouts' && (
+            <div>
+              {loadingMatches ? (
+                <div className="flex justify-center py-12">
+                  <Skeleton width={600} height={400} />
+                </div>
+              ) : (
+                <KnockoutsViewer
+                  tournamentId={tournamentId}
+                  matches={matches || []}
+                  isOrganizer={isOrganizer}
+                  canEditScores={isOrganizer}
+                />
+              )}
+            </div>
+          )}
+
           {activeTab === 'participants' && (
             <Card padding="lg">
-              <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
                 Registered Participants ({registrations?.length || 0})
               </h3>
               {registrations && registrations.length > 0 ? (
                 <div className="space-y-3">
-                  {registrations.map((reg: any) => (
-                    <div key={reg.id} className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {reg.player?.first_name} {reg.player?.last_name}
-                        </p>
-                        <p className="text-sm text-gray-500">{reg.status}</p>
+                  {registrations.map((reg: any) => {
+                    const category = reg.metadata?.category || 'singles';
+                    const isTeamCategory = category === 'doubles' || category === 'mixed';
+                    const partnerName = reg.metadata?.partner_display_name || (reg.team?.player2 ? `${reg.team.player2.first_name} ${reg.team.player2.last_name}` : null);
+                    
+                    return (
+                      <div key={reg.id} className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {reg.player?.first_name} {reg.player?.last_name}
+                              {reg.team && ` & Team`}
+                            </p>
+                            <span className="text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-blue-700 dark:text-blue-300 capitalize">
+                              {category}
+                            </span>
+                            <span className={`text-xs rounded-full px-2 py-0.5 ${
+                              reg.status === 'confirmed' 
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                            }`}>
+                              {reg.status}
+                            </span>
+                          </div>
+                          
+                          {/* Partner Info */}
+                          {isTeamCategory && partnerName && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              <span className="font-medium">Partner:</span> {partnerName}
+                              {reg.metadata?.partner_email && (
+                                <span className="text-xs ml-1">({reg.metadata.partner_email})</span>
+                              )}
+                            </p>
+                          )}
+                          
+                          {isTeamCategory && !partnerName && (
+                            <p className="text-xs text-orange-600 dark:text-orange-400">
+                              ⚠️ Partner not assigned yet
+                            </p>
+                          )}
+                          
+                          {/* Additional Info */}
+                          <div className="flex gap-2 mt-1">
+                            {reg.metadata?.rating && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                Rating: {reg.metadata.rating}
+                              </span>
+                            )}
+                            {reg.metadata?.gender && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                • {reg.metadata.gender}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-center text-gray-600">No participants yet</p>
+                <p className="text-center text-gray-600 dark:text-gray-400">No participants yet</p>
               )}
             </Card>
           )}
@@ -462,7 +536,18 @@ export default function TournamentPage() {
           tournamentId={tournamentId}
           onSystemGenerate={handleSystemGenerate}
           onManualMode={handleManualMode}
+          onAutoGenerate={handleAutoGenerate}
         />
+
+        {/* Auto Generate Fixtures Flow */}
+        {showAutoGenerate && (
+          <AutoGenerateFixturesButton
+            tournamentId={tournamentId}
+            onSuccess={() => {
+              setShowAutoGenerate(false);
+            }}
+          />
+        )}
       </div>
     </div>
   );

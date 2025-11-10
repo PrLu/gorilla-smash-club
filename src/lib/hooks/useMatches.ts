@@ -35,8 +35,18 @@ export interface Match {
   // Joined player/team data
   player1?: { id: string; first_name: string; last_name: string } | null;
   player2?: { id: string; first_name: string; last_name: string } | null;
-  team1?: { id: string; name: string } | null;
-  team2?: { id: string; name: string } | null;
+  team1?: { 
+    id: string; 
+    name: string;
+    player1?: { id: string; first_name: string; last_name: string } | null;
+    player2?: { id: string; first_name: string; last_name: string } | null;
+  } | null;
+  team2?: { 
+    id: string; 
+    name: string;
+    player1?: { id: string; first_name: string; last_name: string } | null;
+    player2?: { id: string; first_name: string; last_name: string } | null;
+  } | null;
 }
 
 /**
@@ -55,8 +65,18 @@ export function useMatches(tournamentId: string) {
           *,
           player1:players!matches_player1_id_fkey(id, first_name, last_name),
           player2:players!matches_player2_id_fkey(id, first_name, last_name),
-          team1:teams!matches_team1_id_fkey(id, name),
-          team2:teams!matches_team2_id_fkey(id, name)
+          team1:teams!matches_team1_id_fkey(
+            id, 
+            name,
+            player1:players!teams_player1_id_fkey(id, first_name, last_name),
+            player2:players!teams_player2_id_fkey(id, first_name, last_name)
+          ),
+          team2:teams!matches_team2_id_fkey(
+            id, 
+            name,
+            player1:players!teams_player1_id_fkey(id, first_name, last_name),
+            player2:players!teams_player2_id_fkey(id, first_name, last_name)
+          )
         `)
         .eq('tournament_id', tournamentId)
         .order('round', { ascending: true })
@@ -97,4 +117,56 @@ export function useMatches(tournamentId: string) {
   }, [tournamentId, queryClient]);
 
   return query;
+}
+
+/**
+ * Format team name to show both partners
+ * Returns "Player1 & Player2" format
+ * Shows "Player1 & Partner" if second partner missing
+ */
+export function getTeamDisplayName(team: Match['team1'] | Match['team2']): string {
+  if (!team) return 'TBD';
+  
+  const player1Name = team.player1 
+    ? `${team.player1.first_name} ${team.player1.last_name}`
+    : null;
+  const player2Name = team.player2 
+    ? `${team.player2.first_name} ${team.player2.last_name}`
+    : null;
+
+  if (player1Name && player2Name) {
+    return `${player1Name} & ${player2Name}`;
+  } else if (player1Name) {
+    // Show "Player1 & Partner" to indicate it's a team event
+    return `${player1Name} & Partner`;
+  } else if (player2Name) {
+    // Show "Partner & Player2" to indicate it's a team event
+    return `Partner & ${player2Name}`;
+  } else {
+    // Fallback to team name if no player data available
+    return team.name || 'Team';
+  }
+}
+
+/**
+ * Get participant name for a match (handles both singles and teams)
+ */
+export function getParticipantName(match: Match, side: 1 | 2): string {
+  if (side === 1) {
+    if (match.player1) {
+      return `${match.player1.first_name} ${match.player1.last_name}`;
+    }
+    if (match.team1) {
+      return getTeamDisplayName(match.team1);
+    }
+    return 'TBD';
+  } else {
+    if (match.player2) {
+      return `${match.player2.first_name} ${match.player2.last_name}`;
+    }
+    if (match.team2) {
+      return getTeamDisplayName(match.team2);
+    }
+    return 'TBD';
+  }
 }

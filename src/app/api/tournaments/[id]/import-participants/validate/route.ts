@@ -2,6 +2,28 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 /**
+ * Helper function to normalize numeric ratings to standard brackets
+ */
+function normalizeRating(rating: string): string | null {
+  // Already in correct format
+  if (['<3.2', '<3.6', '<3.8', 'open'].includes(rating.toLowerCase())) {
+    return rating.toLowerCase();
+  }
+
+  // Parse numeric rating
+  const numRating = parseFloat(rating);
+  if (isNaN(numRating)) {
+    return null;
+  }
+
+  // Convert to brackets
+  if (numRating < 3.2) return '<3.2';
+  if (numRating < 3.6) return '<3.6';
+  if (numRating < 3.8) return '<3.8';
+  return 'open';
+}
+
+/**
  * Validation-only endpoint for CSV import preview
  * POST /api/tournaments/:id/import-participants/validate
  * 
@@ -65,6 +87,36 @@ export async function POST(
       return NextResponse.json({ error: 'Participants array is required and must not be empty' }, { status: 400 });
     }
 
+    // Get tournament details to check which categories/formats are enabled
+    const { data: tournament, error: tournamentError } = await supabaseAdmin
+      .from('tournaments')
+      .select('id, title, formats, format')
+      .eq('id', tournamentId)
+      .single();
+
+    if (tournamentError || !tournament) {
+      return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+    }
+
+    // Get tournament-specific allowed categories
+    // Tournament.formats is an array of enabled categories for this tournament
+    const tournamentFormats = tournament.formats || [tournament.format];
+    
+    // Get category details for validation
+    const { data: categoryDetails } = await supabaseAdmin
+      .from('categories')
+      .select('name, display_name, is_team_based')
+      .in('name', tournamentFormats)
+      .eq('is_active', true);
+
+    const categoryMap = new Map(categoryDetails?.map(c => [c.name, c]) || []);
+    const validCategoryNames = Array.from(categoryMap.keys());
+
+    console.log('=== IMPORT VALIDATION ===');
+    console.log('Tournament ID:', tournamentId);
+    console.log('Tournament formats enabled:', tournamentFormats);
+    console.log('Valid categories for this tournament:', validCategoryNames);
+
     const validationResults = {
       valid: [] as any[],
       invalid: [] as any[],
@@ -79,6 +131,7 @@ export async function POST(
         newUsers: 0,
         alreadyRegistered: 0,
         categoriesUsed: new Set<string>(),
+        tournamentFormats: validCategoryNames,
       },
     };
 
@@ -89,15 +142,6 @@ export async function POST(
         emailCounts.set(p.email.toLowerCase(), (emailCounts.get(p.email.toLowerCase()) || 0) + 1);
       }
     });
-
-    // Get all active categories
-    const { data: activeCategories } = await supabaseAdmin
-      .from('categories')
-      .select('name, display_name, is_team_based')
-      .eq('is_active', true);
-
-    const categoryMap = new Map(activeCategories?.map(c => [c.name, c]) || []);
-    const validCategoryNames = Array.from(categoryMap.keys());
 
     // Get existing profiles and registrations in one query for efficiency
     const allEmails = participants.map((p: any) => p.email?.toLowerCase()).filter(Boolean);
@@ -122,7 +166,7 @@ export async function POST(
 
     // Validate each participant
     for (const participant of participants) {
-      const { email, full_name, phone, gender, dupr_id, category, rating, partner_email, payment_status } = participant;
+      const { email, full_name, phone, gender, dupr_id, category, rating, partner_name, partner_email, partner_rating, partner_gender, payment_status } = participant;
       
       const errors: string[] = [];
       const warnings: string[] = [];
@@ -176,31 +220,59 @@ export async function POST(
 
       if (!category) {
         errors.push('Category is required');
-      } else if (!validCategoryNames.includes(category)) {
-        errors.push(`Invalid category: "${category}". Valid options: ${validCategoryNames.join(', ')}`);
+      } else if (!validCategoryNames.includes(category.toLowerCase())) {
+        errors.push(`Invalid category: "${category}". This tournament only accepts: ${validCategoryNames.join(', ')}`);
       } else {
-        validationResults.statistics.categoriesUsed.add(category);
-        const categoryData = categoryMap.get(category);
+        const normalizedCategory = category.toLowerCase();
+        validationResults.statistics.categoriesUsed.add(normalizedCategory);
+        const categoryData = categoryMap.get(normalizedCategory);
+        info.category = normalizedCategory;
         info.isTeamBased = categoryData?.is_team_based || false;
         
         // Partner validation for team-based categories
         if (categoryData?.is_team_based) {
-          if (!partner_email) {
-            warnings.push(`Category "${category}" is team-based but no partner email provided`);
+          if (!partner_email || !partner_name) {
+            warnings.push(`Category "${normalizedCategory}" is team-based - partner_name and partner_email required`);
           } else if (partner_email === email) {
             errors.push('Partner email cannot be the same as participant email');
+          } else {
+            // Store partner info
+            info.partner_name = partner_name;
+            info.partner_email = partner_email;
+            info.partner_rating = partner_rating;
+            info.partner_gender = partner_gender?.toLowerCase();
           }
+        } else {
+          // Not team-based: gracefully ignore partner fields if provided
+          if (partner_email || partner_name) {
+            warnings.push(`Partner info provided but "${normalizedCategory}" is not team-based - will be ignored`);
+          }
+          // Don't include partner fields in info for non-team categories
         }
       }
 
-      // Gender validation
-      if (gender && !['male', 'female'].includes(gender.toLowerCase())) {
-        errors.push(`Invalid gender: "${gender}". Valid options: male, female`);
+      // Gender validation (auto-normalize to lowercase)
+      if (gender) {
+        const normalizedGender = gender.toLowerCase();
+        if (!['male', 'female'].includes(normalizedGender)) {
+          errors.push(`Invalid gender: "${gender}". Valid options: male, female`);
+        } else {
+          info.gender = normalizedGender; // Normalize to lowercase
+        }
       }
 
-      // Rating validation
-      if (rating && !['<3.2', '<3.6', '<3.8', 'open'].includes(rating)) {
-        warnings.push(`Non-standard rating: "${rating}". Standard options: <3.2, <3.6, <3.8, open`);
+      // Rating validation (auto-convert numeric ratings to brackets)
+      if (rating) {
+        const normalizedRating = normalizeRating(rating);
+        if (normalizedRating) {
+          info.rating = normalizedRating;
+          if (rating !== normalizedRating) {
+            warnings.push(`Rating "${rating}" converted to "${normalizedRating}"`);
+          }
+        } else {
+          warnings.push(`Non-standard rating: "${rating}". Using as-is or defaulting to "open"`);
+          info.rating = 'open'; // Default to open for non-standard ratings
+        }
       }
 
       // Payment status validation

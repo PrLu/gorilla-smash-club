@@ -1,7 +1,7 @@
 'use client';
 
 import { useResendInvite } from '@/lib/hooks/useResendInvite';
-import { Mail, Trash2, CheckCircle, Clock, XCircle, User } from 'lucide-react';
+import { Mail, Trash2, CheckCircle, Clock, XCircle, User, Edit } from 'lucide-react';
 import { Button } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
@@ -27,13 +27,15 @@ interface ParticipantRowProps {
     };
   };
   onRemove?: (participantId: string) => void;
+  onEdit?: (participantId: string) => void;
+  canEdit?: boolean;
 }
 
 /**
  * Polished participant row with inline actions
  * Shows invitation status, avatar, and management controls
  */
-export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
+export function ParticipantRow({ participant, onRemove, onEdit, canEdit = false }: ParticipantRowProps) {
   const resendInvite = useResendInvite();
   const [isRemoving, setIsRemoving] = useState(false);
 
@@ -51,10 +53,14 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
     }
   };
 
-  const handleRemove = () => {
-    if (window.confirm(`Remove ${participant.display_name || participant.email}?`)) {
+  const handleRemove = async () => {
+    if (window.confirm(`Remove ${participant.display_name || participant.email} from this tournament?\n\nTheir account will remain active for other tournaments.`)) {
       setIsRemoving(true);
-      onRemove?.(participant.id);
+      try {
+        await onRemove?.(participant.id);
+      } catch (error) {
+        setIsRemoving(false);
+      }
     }
   };
 
@@ -107,11 +113,21 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
             )}
           </div>
 
-          {/* Partner Info for Teams */}
-          {participant.is_team && participant.partner_name && (
-            <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              Partner: {participant.partner_name}
-              {participant.partner_email && ` (${participant.partner_email})`}
+          {/* Partner Info for Teams/Doubles/Mixed */}
+          {(participant.is_team || participant.category === 'doubles' || participant.category === 'mixed') && participant.partner_name && (
+            <div className="mt-1 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Partner:</span>
+              <span>{participant.partner_name}</span>
+              {participant.partner_email && (
+                <span className="text-xs text-gray-500 dark:text-gray-500">({participant.partner_email})</span>
+              )}
+            </div>
+          )}
+          
+          {/* Show pending partner message if category is team-based but no partner yet */}
+          {(participant.is_team || participant.category === 'doubles' || participant.category === 'mixed') && !participant.partner_name && (
+            <div className="mt-1 flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
+              <span className="text-xs">⚠️ Partner not assigned yet</span>
             </div>
           )}
 
@@ -164,6 +180,18 @@ export function ParticipantRow({ participant, onRemove }: ParticipantRowProps) {
 
       {/* Right: Actions */}
       <div className="flex flex-shrink-0 items-center gap-2">
+        {canEdit && onEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(participant.id)}
+            leftIcon={<Edit className="h-4 w-4" />}
+            aria-label="Edit participant"
+          >
+            <span className="hidden sm:inline">Edit</span>
+          </Button>
+        )}
+
         {participant.invitation?.status === 'pending' && (
           <Button
             variant="outline"

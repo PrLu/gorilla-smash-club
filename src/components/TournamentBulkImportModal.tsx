@@ -111,24 +111,33 @@ export function TournamentBulkImportModal({
       const participant: any = {};
 
       headers.forEach((header, index) => {
+        const value = values[index];
+        if (!value) return; // Skip empty values
+        
         if (header === 'full_name' || header === 'full name' || header === 'name') {
-          participant.full_name = values[index];
+          participant.full_name = value;
         } else if (header === 'email') {
-          participant.email = values[index];
+          participant.email = value;
         } else if (header === 'phone' || header === 'phone_number') {
-          participant.phone = values[index];
+          participant.phone = value;
         } else if (header === 'gender') {
-          participant.gender = values[index]?.toLowerCase();
+          participant.gender = value?.toLowerCase();
         } else if (header === 'dupr_id' || header === 'dupr id' || header === 'dupr') {
-          participant.dupr_id = values[index];
+          participant.dupr_id = value;
         } else if (header === 'category') {
-          participant.category = values[index]?.toLowerCase();
+          participant.category = value?.toLowerCase();
         } else if (header === 'rating' || header === 'player_rating') {
-          participant.rating = values[index];
+          participant.rating = value;
+        } else if (header === 'partner_name' || header === 'partner name' || header === 'partner_display_name') {
+          participant.partner_name = value;
         } else if (header === 'partner_email' || header === 'partner email') {
-          participant.partner_email = values[index];
+          participant.partner_email = value;
+        } else if (header === 'partner_rating' || header === 'partner rating') {
+          participant.partner_rating = value;
+        } else if (header === 'partner_gender' || header === 'partner gender') {
+          participant.partner_gender = value?.toLowerCase();
         } else if (header === 'payment_status' || header === 'payment') {
-          participant.payment_status = values[index]?.toLowerCase();
+          participant.payment_status = value?.toLowerCase();
         }
       });
 
@@ -193,7 +202,10 @@ export function TournamentBulkImportModal({
         toast.error(`Found ${data.validation.statistics.invalidCount} invalid entries. Please review errors.`);
       } else if (data.validation.statistics.warningCount > 0) {
         setSelectedTab('warnings');
-        toast.warning(`Found ${data.validation.statistics.warningCount} warnings. Review before importing.`);
+        toast(`⚠️ Found ${data.validation.statistics.warningCount} warnings. Review before importing.`, {
+          icon: '⚠️',
+          duration: 4000,
+        });
       } else {
         setSelectedTab('valid');
         toast.success(`✅ All ${data.validation.statistics.validCount} participants validated successfully!`);
@@ -275,9 +287,11 @@ export function TournamentBulkImportModal({
   };
 
   const downloadTemplate = () => {
-    const template = `full_name,email,phone,gender,category,rating,partner_email,payment_status
-John Doe,john@example.com,1234567890,male,singles,<3.6,,paid
-Jane Smith,jane@example.com,0987654321,female,doubles,<3.8,partner@example.com,pending`;
+    const template = `full_name,email,phone,gender,category,rating,partner_name,partner_email,partner_rating,partner_gender,payment_status
+John Doe,john@example.com,1234567890,male,singles,<3.6,,,,,paid
+Jane Smith,jane@example.com,0987654321,female,doubles,<3.8,Bob Johnson,bob@example.com,<3.6,,pending
+Alice Brown,alice@example.com,5551234567,,mixed,open,Charlie Davis,charlie@example.com,open,male,paid
+Mike Wilson,mike@example.com,,male,singles,,,,,,pending`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -363,16 +377,38 @@ Jane Smith,jane@example.com,0987654321,female,doubles,<3.8,partner@example.com,p
 
       {/* Required Fields Info */}
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-        <h4 className="mb-2 font-semibold text-gray-900 dark:text-white">Required CSV Columns:</h4>
-        <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
-          <li>• <strong>email</strong> - Participant's email address</li>
-          <li>• <strong>full_name</strong> - Full name</li>
-          <li>• <strong>category</strong> - singles, doubles, or mixed</li>
-          <li>• <strong>gender</strong> - male or female (optional)</li>
-          <li>• <strong>rating</strong> - &lt;3.2, &lt;3.6, &lt;3.8, or open (optional)</li>
-          <li>• <strong>partner_email</strong> - For doubles/mixed (optional)</li>
-          <li>• <strong>payment_status</strong> - pending, paid, or waived (optional)</li>
-        </ul>
+        <h4 className="mb-3 font-semibold text-gray-900 dark:text-white">CSV Column Reference:</h4>
+        
+        <div className="space-y-3">
+          <div>
+            <h5 className="text-sm font-semibold text-green-700 dark:text-green-400 mb-1">✅ Required for All:</h5>
+            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300 ml-2">
+              <li>• <strong>email</strong> - Participant's email address</li>
+              <li>• <strong>full_name</strong> - Full name</li>
+              <li>• <strong>category</strong> - singles, doubles, or mixed</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h5 className="text-sm font-semibold text-orange-700 dark:text-orange-400 mb-1">⚠️ Required for Doubles/Mixed:</h5>
+            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300 ml-2">
+              <li>• <strong>partner_name</strong> - Partner's full name</li>
+              <li>• <strong>partner_email</strong> - Partner's email</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h5 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">⚪ Optional (All Categories):</h5>
+            <ul className="space-y-1 text-sm text-gray-700 dark:text-gray-300 ml-2">
+              <li>• <strong>gender</strong> - male or female</li>
+              <li>• <strong>rating</strong> - &lt;3.2, &lt;3.6, &lt;3.8, or open</li>
+              <li>• <strong>partner_rating</strong> - Partner's rating (for doubles/mixed)</li>
+              <li>• <strong>partner_gender</strong> - Partner's gender (for doubles/mixed)</li>
+              <li>• <strong>phone</strong> - Phone number</li>
+              <li>• <strong>payment_status</strong> - pending, paid, or waived</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -711,25 +747,27 @@ Jane Smith,jane@example.com,0987654321,female,doubles,<3.8,partner@example.com,p
         step === 'importing' ? 'Importing...' :
         'Import Complete'
       }
-      size="lg"
+      size="xl"
     >
-      {step === 'upload' && renderUploadStep()}
-      {step === 'validate' && (
-        <div className="flex flex-col items-center justify-center py-12">
-          <RefreshCw className="mb-4 h-12 w-12 animate-spin text-primary-600" />
-          <p className="text-lg font-medium text-gray-900 dark:text-white">Validating participants...</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">This may take a moment</p>
-        </div>
-      )}
-      {step === 'preview' && renderPreviewStep()}
-      {step === 'importing' && (
-        <div className="flex flex-col items-center justify-center py-12">
-          <RefreshCw className="mb-4 h-12 w-12 animate-spin text-primary-600" />
-          <p className="text-lg font-medium text-gray-900 dark:text-white">Importing participants...</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Please wait while we process your data</p>
-        </div>
-      )}
-      {step === 'complete' && renderCompleteStep()}
+      <div className="max-h-[75vh] overflow-y-auto pr-2">
+          {step === 'upload' && renderUploadStep()}
+        {step === 'validate' && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <RefreshCw className="mb-4 h-12 w-12 animate-spin text-primary-600" />
+            <p className="text-lg font-medium text-gray-900 dark:text-white">Validating participants...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">This may take a moment</p>
+          </div>
+        )}
+        {step === 'preview' && renderPreviewStep()}
+        {step === 'importing' && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <RefreshCw className="mb-4 h-12 w-12 animate-spin text-primary-600" />
+            <p className="text-lg font-medium text-gray-900 dark:text-white">Importing participants...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Please wait while we process your data</p>
+          </div>
+        )}
+        {step === 'complete' && renderCompleteStep()}
+      </div>
     </Modal>
   );
 }

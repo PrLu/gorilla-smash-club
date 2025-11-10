@@ -22,6 +22,7 @@ interface PlayerStanding {
 interface PoolStanding {
   poolId: string;
   poolName: string;
+  category?: string;
   advanceCount: number;
   standings: PlayerStanding[];
   isComplete: boolean;
@@ -31,9 +32,10 @@ interface PoolStandingsTableProps {
   tournamentId: string;
   onAdvanceClick?: () => void;
   canAdvance?: boolean;
+  selectedCategory?: string; // Filter by category
 }
 
-export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = false }: PoolStandingsTableProps) {
+export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = false, selectedCategory = 'all' }: PoolStandingsTableProps) {
   const [poolStandings, setPoolStandings] = useState<PoolStanding[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,19 +43,42 @@ export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = 
     loadStandings();
   }, [tournamentId]);
 
+  useEffect(() => {
+    console.log('PoolStandingsTable - Total loaded:', poolStandings.length);
+    console.log('Selected category filter:', selectedCategory);
+    poolStandings.forEach(ps => {
+      console.log(`  - ${ps.poolName} (Category: ${ps.category || 'N/A'})`);
+    });
+  }, [poolStandings, selectedCategory]);
+
+  // Filter pools by selected category
+  const filteredPoolStandings = selectedCategory === 'all'
+    ? poolStandings
+    : poolStandings.filter(ps => {
+        const poolCategory = ps.category?.toUpperCase();
+        const filterCategory = selectedCategory.toUpperCase();
+        return poolCategory === filterCategory;
+      });
+
+  console.log('Filtered pools to display:', filteredPoolStandings.length);
+
   const loadStandings = async () => {
     setLoading(true);
     try {
+      console.log('Fetching pool standings for tournament:', tournamentId);
       const response = await fetch(`/api/tournaments/${tournamentId}/pools/standings`);
       const data = await response.json();
 
+      console.log('Pool standings API response:', data);
+
       if (response.ok) {
+        console.log(`✅ Loaded ${data.poolStandings?.length || 0} pool standings`);
         setPoolStandings(data.poolStandings || []);
       } else {
-        console.error('Failed to load standings:', data.error);
+        console.error('❌ Failed to load standings:', data.error);
       }
     } catch (err) {
-      console.error('Load standings error:', err);
+      console.error('❌ Load standings error:', err);
     } finally {
       setLoading(false);
     }
@@ -82,10 +107,22 @@ export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = 
     );
   }
 
-  const allPoolsComplete = poolStandings.every(ps => ps.isComplete);
+  const allPoolsComplete = filteredPoolStandings.every(ps => ps.isComplete);
+
+  console.log('Rendering PoolStandingsTable with', filteredPoolStandings.length, 'filtered pools');
 
   return (
     <div className="space-y-6">
+      {/* Debug Info */}
+      {poolStandings.length > 0 && (
+        <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          {selectedCategory === 'all' 
+            ? `Showing all ${poolStandings.length} pools across ${new Set(poolStandings.map(ps => ps.category)).size} categories`
+            : `Showing ${filteredPoolStandings.length} pools for ${selectedCategory}`
+          }
+        </div>
+      )}
+      
       {/* Advancement Action */}
       {canAdvance && allPoolsComplete && (
         <Card padding="md" className="border-2 border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
@@ -107,7 +144,7 @@ export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = 
       )}
 
       {/* Pool Standings */}
-      {poolStandings.map((poolStanding) => (
+      {filteredPoolStandings.map((poolStanding) => (
         <Card key={poolStanding.poolId} padding="lg">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -245,6 +282,7 @@ export function PoolStandingsTable({ tournamentId, onAdvanceClick, canAdvance = 
     </div>
   );
 }
+
 
 
 

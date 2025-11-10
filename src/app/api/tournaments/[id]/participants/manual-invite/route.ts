@@ -40,18 +40,18 @@ export async function POST(
       sendInvite = true 
     } = body;
 
-    if (!email || !category || !rating || !gender) {
+    if (!email || !category) {
       return NextResponse.json(
-        { error: 'Email, category, rating, and gender are required' },
+        { error: 'Email and category are required' },
         { status: 400 }
       );
     }
 
-    // Validate partner data for doubles/mixed
+    // Validate partner data for doubles/mixed (only email and name required)
     const isDoublesOrMixed = category === 'doubles' || category === 'mixed';
-    if (isDoublesOrMixed && (!partner_email || !partner_rating || !partner_gender)) {
+    if (isDoublesOrMixed && (!partner_email || !partner_display_name)) {
       return NextResponse.json(
-        { error: 'Partner email, rating, and gender are required for doubles/mixed' },
+        { error: 'Partner email and partner display name are required for doubles/mixed' },
         { status: 400 }
       );
     }
@@ -226,6 +226,21 @@ export async function POST(
       }
 
       // Create registration (linked to team for doubles/mixed, player for singles)
+      const registrationMetadata: any = { 
+        category, 
+        rating, 
+        gender, 
+        role: body.role || 'player',
+      };
+
+      // Add partner info for doubles/mixed
+      if (isDoublesOrMixed) {
+        registrationMetadata.partner_email = partner_email || null;
+        registrationMetadata.partner_display_name = partner_display_name || null;
+        registrationMetadata.partner_rating = partner_rating || null;
+        registrationMetadata.partner_gender = partner_gender || null;
+      }
+
       const { data: registration, error: regError } = await supabase
         .from('registrations')
         .insert({
@@ -234,13 +249,7 @@ export async function POST(
           team_id: teamId,
           status: 'confirmed',
           payment_status: 'paid',
-          metadata: { 
-            category, 
-            rating, 
-            gender, 
-            role: body.role || 'player',
-            partner_email: partner_email || null,
-          },
+          metadata: registrationMetadata,
         })
         .select()
         .single();

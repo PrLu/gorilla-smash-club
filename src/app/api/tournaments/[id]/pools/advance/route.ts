@@ -1,66 +1,43 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { generateSingleElimFixtures } from '@/lib/fixtures';
 
 /**
- * Advance qualified players from pools to knockout rounds
- * Fills TBD slots in knockout matches with pool winners/runners-up
+ * Advance Qualified Players from Pools to Knockout
+ * Creates knockout bracket with top players from each pool
  */
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const tournamentId = params.id;
+
   try {
-    // Get auth token
+    const body = await request.json();
+    const { seedStrategy = 'poolRankOrder' } = body;
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Get Authorization header
     const authHeader = request.headers.get('authorization');
-    
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let currentUser = null;
+
+    if (authHeader) {
+      const userSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const {
+        data: { user },
+      } = await userSupabase.auth.getUser(authHeader.replace('Bearer ', ''));
+      currentUser = user;
     }
 
-    const supabaseAuth = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-
-    if (userError || !user) {
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const tournamentId = params.id;
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-
-    // Check permissions
-    const { data: roleData } = await supabaseAdmin
-      .from('user_roles')
-      .select('role')
-      .eq('profile_id', user.id)
-      .in('role', ['admin', 'root'])
-      .maybeSingle();
-
-    const { data: tournament } = await supabaseAdmin
-      .from('tournaments')
-      .select('organizer_id')
-      .eq('id', tournamentId)
-      .single();
-
-    const isOrganizer = tournament?.organizer_id === user.id;
-
-    if (!roleData && !isOrganizer) {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     // Get pool standings
@@ -69,266 +46,175 @@ export async function POST(
     );
     const standingsData = await standingsResponse.json();
 
-    if (!standingsData.poolStandings || standingsData.poolStandings.length === 0) {
-      return NextResponse.json({ error: 'No pool standings found' }, { status: 400 });
+    if (!standingsData.success || !standingsData.allPoolsComplete) {
+      return NextResponse.json(
+        { error: 'Not all pools are complete. Finish all pool matches first.' },
+        { status: 400 }
+      );
     }
 
-    // Check if all pools are complete
-    const allComplete = standingsData.poolStandings.every((ps: any) => ps.isComplete);
-    if (!allComplete) {
-      return NextResponse.json({ 
-        error: 'Not all pool matches are completed. Please finish all pool matches first.' 
-      }, { status: 400 });
-    }
+    // Extract qualifiers from each pool
+    const qualifiersByCategory: Record<string, any[]> = {};
 
-    // Collect qualified players in seeded order
-    const qualifiedPlayers: any[] = [];
+    standingsData.poolStandings.forEach((poolStanding: any) => {
+      const category = poolStanding.category || 'UNKNOWN';
+      const qualifiers = poolStanding.standings.filter((s: any) => s.advances);
 
-    // Collect by rank across pools (1st place from each pool, then 2nd place, etc.)
-    const maxAdvance = Math.max(...standingsData.poolStandings.map((ps: any) => ps.advanceCount));
-    
-    for (let rank = 1; rank <= maxAdvance; rank++) {
-      standingsData.poolStandings.forEach((poolStanding: any) => {
-        const player = poolStanding.standings.find((s: any) => s.rank === rank && s.advances);
-        if (player) {
-          qualifiedPlayers.push({
-            playerId: player.playerId,
-            playerName: player.playerName,
-            poolName: poolStanding.poolName,
-            rank: player.rank,
-          });
-        }
-      });
-    }
-
-    if (qualifiedPlayers.length < 2) {
-      return NextResponse.json({ error: 'Need at least 2 qualified players for knockout' }, { status: 400 });
-    }
-
-    // Delete any existing knockout matches (in case of regeneration)
-    await supabaseAdmin
-      .from('matches')
-      .delete()
-      .eq('tournament_id', tournamentId)
-      .eq('match_type', 'knockout');
-
-    // DYNAMICALLY GENERATE KNOCKOUT BRACKET
-    // Based on actual number of qualified players
-    const count = qualifiedPlayers.length;
-    
-    // Determine bracket size (next power of 2)
-    const bracketSize = Math.pow(2, Math.ceil(Math.log2(count)));
-    const totalRounds = Math.log2(bracketSize);
-    const byesNeeded = bracketSize - count;
-
-    console.log(`Generating knockout for ${count} players, bracket size ${bracketSize}, ${byesNeeded} byes`);
-
-    // NEW MATCHUP LOGIC: Pool toppers vs runners-up from alternate pools
-    // Group qualified players by rank
-    const playersByRank: any[][] = [];
-    for (let rank = 1; rank <= maxAdvance; rank++) {
-      const playersAtRank = qualifiedPlayers.filter((p: any) => p.rank === rank);
-      if (playersAtRank.length > 0) {
-        playersByRank.push(playersAtRank);
+      if (!qualifiersByCategory[category]) {
+        qualifiersByCategory[category] = [];
       }
-    }
 
-    // Create matchups: alternate pool toppers with runners-up
-    const seededPlayers: any[] = [];
-    
-    if (playersByRank.length === 1) {
-      // Only one rank advancing (all winners) - pair them sequentially
-      seededPlayers.push(...playersByRank[0]);
-    } else if (playersByRank.length >= 2) {
-      // Multiple ranks: pair rank 1 from pool A with rank 2 from pool B, etc.
-      const toppers = playersByRank[0]; // Rank 1 players
-      const runnersUp = playersByRank[1]; // Rank 2 players
-      
-      // Alternate pairing strategy:
-      // Pool A topper vs Pool B runner-up, Pool B topper vs Pool A runner-up
-      const numPools = standingsData.poolStandings.length;
-      
-      if (toppers.length === runnersUp.length && toppers.length === numPools) {
-        // Perfect case: same number of toppers and runners-up as pools
-        // Pair each topper with runner-up from next pool
-        for (let i = 0; i < toppers.length; i++) {
-          seededPlayers.push(toppers[i]);
-          // Pair with runner-up from the next pool (circular)
-          const runnerUpIndex = (i + 1) % runnersUp.length;
-          seededPlayers.push(runnersUp[runnerUpIndex]);
-        }
-      } else {
-        // Fallback: interleave toppers and runners-up with offset
-        const maxLen = Math.max(toppers.length, runnersUp.length);
-        for (let i = 0; i < maxLen; i++) {
-          if (i < toppers.length) {
-            seededPlayers.push(toppers[i]);
-          }
-          // Pair with runner-up from different pool (offset)
-          const runnerUpIndex = (i + Math.floor(numPools / 2)) % runnersUp.length;
-          if (runnerUpIndex < runnersUp.length && i < runnersUp.length) {
-            seededPlayers.push(runnersUp[runnerUpIndex]);
-          }
-        }
-      }
-      
-      // Add any remaining ranks (3rd place, etc.)
-      for (let r = 2; r < playersByRank.length; r++) {
-        seededPlayers.push(...playersByRank[r]);
-      }
-    }
-    
-    // Pad with nulls for byes (top seeds get byes)
-    const paddedPlayers: (any | null)[] = [];
-    
-    // Give byes to top seeds
-    for (let i = 0; i < byesNeeded; i++) {
-      paddedPlayers.push(seededPlayers[i]); // Top seed with bye
-      paddedPlayers.push(null); // Bye slot
-    }
-    
-    // Add remaining players
-    for (let i = byesNeeded; i < seededPlayers.length; i += 2) {
-      paddedPlayers.push(seededPlayers[i]);
-      paddedPlayers.push(seededPlayers[i + 1] || null);
-    }
-
-    // Generate knockout matches
-    const knockoutMatches: any[] = [];
-    let matchPosition = 0;
-    let currentRound = 2; // First knockout round
-
-    // Generate first round
-    for (let i = 0; i < paddedPlayers.length; i += 2) {
-      const p1 = paddedPlayers[i];
-      const p2 = paddedPlayers[i + 1];
-
-      // Skip if both are null (shouldn't happen)
-      if (!p1 && !p2) continue;
-
-      // Determine if this is a bye match
-      const isBye = !p1 || !p2;
-      const winner = !p1 ? p2?.playerId : !p2 ? p1?.playerId : null;
-
-      knockoutMatches.push({
-        tournament_id: tournamentId,
-        pool_id: null,
-        match_type: 'knockout',
-        round: currentRound,
-        bracket_pos: matchPosition++,
-        player1_id: p1?.playerId || null,
-        player2_id: p2?.playerId || null,
-        status: isBye ? 'completed' : 'pending',
-        winner_player_id: winner,
-        court: null,
-      });
-    }
-
-    // Generate subsequent rounds (placeholder matches)
-    const firstRoundMatchCount = knockoutMatches.length;
-    currentRound++;
-    let previousRoundMatches = firstRoundMatchCount;
-
-    while (previousRoundMatches > 1) {
-      const nextRoundMatches = Math.floor(previousRoundMatches / 2);
-      
-      for (let i = 0; i < nextRoundMatches; i++) {
-        knockoutMatches.push({
-          tournament_id: tournamentId,
-          pool_id: null,
-          match_type: 'knockout',
-          round: currentRound,
-          bracket_pos: matchPosition++,
-          player1_id: null,
-          player2_id: null,
-          status: 'pending',
-          next_match_id: null,
-          court: null,
+      // Add pool rank info to each qualifier
+      qualifiers.forEach((q: any) => {
+        qualifiersByCategory[category].push({
+          playerId: q.playerId,
+          playerName: q.playerName,
+          poolName: poolStanding.poolName,
+          poolRank: q.rank,
+          wins: q.wins,
+          losses: q.losses,
+          pointDifferential: q.pointDifferential,
         });
-      }
-      
-      currentRound++;
-      previousRoundMatches = nextRoundMatches;
-    }
-
-    // Link matches (set next_match_id for winner advancement)
-    let roundStartIndex = 0;
-    for (let round = 2; round < currentRound - 1; round++) {
-      const roundMatches = knockoutMatches.filter(m => m.round === round);
-      const nextRoundMatches = knockoutMatches.filter(m => m.round === round + 1);
-      
-      roundMatches.forEach((match, index) => {
-        const nextMatchIndex = Math.floor(index / 2);
-        if (nextRoundMatches[nextMatchIndex]) {
-          match.next_match_id = nextRoundMatches[nextMatchIndex].id || null;
-        }
       });
-    }
+    });
 
-    // Insert knockout matches
-    const { data: createdMatches, error: insertError } = await supabaseAdmin
-      .from('matches')
-      .insert(knockoutMatches)
-      .select();
+    console.log('Qualifiers by category:', Object.keys(qualifiersByCategory));
 
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 400 });
-    }
+    const knockoutMatchesCreated: any[] = [];
+    const categoryResults: Record<string, any> = {};
 
-    // Now link next_match_id properly with actual IDs
-    for (let round = 2; round < currentRound - 1; round++) {
-      const roundMatches = createdMatches.filter((m: any) => m.round === round);
-      const nextRoundMatches = createdMatches.filter((m: any) => m.round === round + 1);
+    // Generate knockout bracket for each category
+    for (const [category, qualifiers] of Object.entries(qualifiersByCategory)) {
+      console.log(`Generating knockout for ${category}: ${qualifiers.length} qualifiers`);
+
+      if (qualifiers.length < 2) {
+        console.log(`Skipping ${category}: only ${qualifiers.length} qualifier(s)`);
+        categoryResults[category] = {
+          status: 'skipped',
+          reason: 'Not enough qualifiers',
+          qualifiers: qualifiers.length,
+        };
+        continue;
+      }
+
+      // Apply seeding strategy
+      let seededQualifiers = [...qualifiers];
       
-      for (let i = 0; i < roundMatches.length; i++) {
-        const nextMatchIndex = Math.floor(i / 2);
-        if (nextRoundMatches[nextMatchIndex]) {
-          await supabaseAdmin
-            .from('matches')
-            .update({ next_match_id: nextRoundMatches[nextMatchIndex].id })
-            .eq('id', roundMatches[i].id);
+      if (seedStrategy === 'poolRankOrder') {
+        // Group by pool rank, then by pool alphabetically
+        seededQualifiers.sort((a, b) => {
+          if (a.poolRank !== b.poolRank) return a.poolRank - b.poolRank;
+          return a.poolName.localeCompare(b.poolName);
+        });
+      } else if (seedStrategy === 'pointDiff') {
+        // Sort by point differential
+        seededQualifiers.sort((a, b) => b.pointDifferential - a.pointDifferential);
+      } else if (seedStrategy === 'random') {
+        // Random shuffle
+        seededQualifiers = seededQualifiers.sort(() => Math.random() - 0.5);
+      }
+
+      const qualifierIds = seededQualifiers.map((q) => q.playerId);
+
+      // Check if category uses teams or players
+      const sampleId = qualifierIds[0];
+      const { data: playerCheck } = await supabase
+        .from('players')
+        .select('id')
+        .eq('id', sampleId)
+        .single();
+      const isTeamBased = !playerCheck;
+
+      // Generate knockout fixtures
+      const knockoutFixtures = generateSingleElimFixtures(qualifierIds, tournamentId, {
+        seed: 'registered', // Already seeded above
+      });
+
+      // Get highest bracket_pos from existing matches to avoid conflicts
+      const { data: existingMatches } = await supabase
+        .from('matches')
+        .select('bracket_pos')
+        .eq('tournament_id', tournamentId)
+        .order('bracket_pos', { ascending: false })
+        .limit(1);
+
+      const bracketPosOffset = (existingMatches?.[0]?.bracket_pos || 0) + 1;
+
+      // Prepare knockout matches for insertion
+      const matchesToInsert = knockoutFixtures.map((fixture) => ({
+        tournament_id: fixture.tournament_id,
+        match_type: 'knockout',
+        round: fixture.round,
+        bracket_pos: fixture.bracket_pos + bracketPosOffset,
+        player1_id: isTeamBased ? null : fixture.player1_id,
+        player2_id: isTeamBased ? null : fixture.player2_id,
+        team1_id: isTeamBased ? fixture.player1_id : null,
+        team2_id: isTeamBased ? fixture.player2_id : null,
+        status: fixture.status,
+        winner_player_id: isTeamBased ? null : fixture.winner_player_id,
+        winner_team_id: isTeamBased ? fixture.winner_player_id : null,
+        court: category, // Store category
+      }));
+
+      // Insert knockout matches
+      const { data: createdMatches, error: insertError } = await supabase
+        .from('matches')
+        .insert(matchesToInsert)
+        .select();
+
+      if (insertError) {
+        console.error(`Failed to create knockout for ${category}:`, insertError);
+        categoryResults[category] = {
+          status: 'error',
+          error: insertError.message,
+        };
+        continue;
+      }
+
+      // Update next_match_id references
+      for (let i = 0; i < createdMatches.length; i++) {
+        const fixture = knockoutFixtures[i];
+        if (fixture.next_match_pos !== undefined) {
+          const nextMatch = createdMatches[fixture.next_match_pos];
+          if (nextMatch) {
+            await supabase
+              .from('matches')
+              .update({ next_match_id: nextMatch.id })
+              .eq('id', createdMatches[i].id);
+          }
         }
       }
-    }
 
-    // Update pool_players with final standings
-    for (const poolStanding of standingsData.poolStandings) {
-      for (const standing of poolStanding.standings) {
-        await supabaseAdmin
-          .from('pool_players')
-          .update({
-            wins: standing.wins,
-            losses: standing.losses,
-            points: standing.pointDifferential,
-          })
-          .eq('pool_id', poolStanding.poolId)
-          .eq('player_id', standing.playerId);
-      }
-    }
+      // Mark pools as completed
+      await supabase
+        .from('pools')
+        .update({ status: 'completed' })
+        .eq('tournament_id', tournamentId)
+        .eq('category', category);
 
-    // Update pool status to completed
-    const poolIds = standingsData.poolStandings.map((ps: any) => ps.poolId);
-    await supabaseAdmin
-      .from('pools')
-      .update({ status: 'completed' })
-      .in('id', poolIds);
+      knockoutMatchesCreated.push(...createdMatches);
+      categoryResults[category] = {
+        status: 'success',
+        qualifiers: qualifiers.length,
+        knockoutMatches: createdMatches.length,
+        seeding: seededQualifiers.map((q) => q.playerName),
+      };
+
+      console.log(`✅ Knockout created for ${category}: ${createdMatches.length} matches`);
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Knockout bracket generated and qualified players advanced',
-      stats: {
-        qualifiedPlayers: qualifiedPlayers.length,
-        knockoutMatchesCreated: createdMatches.length,
-        poolsCompleted: poolIds.length,
-        bracketSize: bracketSize,
-        byesUsed: byesNeeded,
-      },
-      qualifiedPlayers,
+      message: 'Qualified players advanced to knockout brackets',
+      knockoutMatchesCreated: knockoutMatchesCreated.length,
+      categoriesProcessed: Object.keys(categoryResults).length,
+      categoryResults,
     });
-
   } catch (error: any) {
-    console.error('Pool advancement error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Advance players error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to advance players' },
+      { status: 500 }
+    );
   }
 }
-

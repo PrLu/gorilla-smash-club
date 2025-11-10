@@ -1,0 +1,67 @@
+╔══════════════════════════════════════════════════════════╗
+║                    URGENT CHECK                        ║
+╚══════════════════════════════════════════════════════════╝
+
+When you generate fixtures, look at your SERVER CONSOLE (terminal)
+
+You should see boxes like this for EACH category:
+
+╔══════════════════════════════════════════════════════════╗
+║  CATEGORY 1/3: SINGLES                                 ║
+╚══════════════════════════════════════════════════════════╝
+Category name: singles
+Participants: 12
+🏊 POOL MODE: Generating pools...
+✅ Pool generation complete for singles: 3 pools, 18 matches
+
+╔══════════════════════════════════════════════════════════╗
+║  CATEGORY 2/3: DOUBLES                                 ║
+╚══════════════════════════════════════════════════════════╝
+Category name: doubles
+Participants: 10
+🏊 POOL MODE: Generating pools...
+✅ Pool generation complete for doubles: 2 pools, 15 matches
+
+╔══════════════════════════════════════════════════════════╗
+║  CATEGORY 3/3: MIXED                                   ║
+╚══════════════════════════════════════════════════════════╝
+Category name: mixed
+Participants: 4
+🏊 POOL MODE: Generating pools...
+✅ Pool generation complete for mixed: 1 pools, 6 matches
+
+══════════════════════════════════════════════════════════
+                  GENERATION SUMMARY
+══════════════════════════════════════════════════════════
+Categories detected: 3
+Categories attempted: 3
+Total pools created: 6
+Total matches created: 39
+
+singles:
+  ✅ SUCCESS: 3 pools, 18 matches
+doubles:
+  ✅ SUCCESS: 2 pools, 15 matches
+mixed:
+  ✅ SUCCESS: 1 pools, 6 matches
+══════════════════════════════════════════════════════════
+
+
+QUESTION: Do you see ALL THREE category boxes?
+
+If you ONLY see:
+╔══════════════════════════════════════════════════════════╗
+║  CATEGORY 1/1: SINGLES                                 ║
+╚══════════════════════════════════════════════════════════╝
+✅ Pool generation complete for singles
+
+And then the summary shows "Categories detected: 1"
+
+Then the problem is: Your registrations only have singles category!
+
+COPY AND PASTE YOUR ENTIRE SERVER CONSOLE OUTPUT HERE so I can see what's happening!
+
+
+
+
+

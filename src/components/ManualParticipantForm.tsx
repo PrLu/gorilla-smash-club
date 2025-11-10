@@ -297,10 +297,10 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
           />
 
           <Select
-            {...register('rating', { required: 'Rating is required' })}
+            {...register('rating')}
             label="Rating"
-            required
             options={[
+              { value: '', label: 'Not specified' },
               { value: '<3.2', label: 'Below 3.2' },
               { value: '<3.6', label: 'Below 3.6' },
               { value: '<3.8', label: 'Below 3.8' },
@@ -310,10 +310,10 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
           />
 
           <Select
-            {...register('gender', { required: 'Gender is required' })}
+            {...register('gender')}
             label="Gender"
-            required
             options={[
+              { value: '', label: 'Not specified' },
               { value: 'male', label: 'Male' },
               { value: 'female', label: 'Female' },
             ]}
@@ -392,12 +392,10 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
             {/* Partner Rating & Gender */}
             <div className="grid gap-4 md:grid-cols-2">
               <Select
-                {...register('partner_rating', {
-                  required: isDoublesOrMixed ? 'Partner rating is required' : false,
-                })}
+                {...register('partner_rating')}
                 label="Partner Rating"
-                required={isDoublesOrMixed}
                 options={[
+                  { value: '', label: 'Not specified' },
                   { value: '<3.2', label: 'Below 3.2' },
                   { value: '<3.6', label: 'Below 3.6' },
                   { value: '<3.8', label: 'Below 3.8' },
@@ -407,12 +405,10 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
               />
 
               <Select
-                {...register('partner_gender', {
-                  required: isDoublesOrMixed ? 'Partner gender is required' : false,
-                })}
+                {...register('partner_gender')}
                 label="Partner Gender"
-                required={isDoublesOrMixed}
                 options={[
+                  { value: '', label: 'Not specified' },
                   { value: 'male', label: 'Male' },
                   { value: 'female', label: 'Female' },
                 ]}
@@ -480,10 +476,8 @@ export function ManualParticipantForm({ tournamentId, onSuccess }: ManualPartici
             disabled={
               !email || 
               !watch('display_name') || 
-              !watch('category') || 
-              !watch('rating') || 
-              !watch('gender') ||
-              (isDoublesOrMixed && (!partnerEmail || !watch('partner_display_name') || !watch('partner_rating') || !watch('partner_gender')))
+              !watch('category') ||
+              (isDoublesOrMixed && (!partnerEmail || !watch('partner_display_name')))
             }
           >
             {inviteParticipant.isPending

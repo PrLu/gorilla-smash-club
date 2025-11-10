@@ -102,6 +102,23 @@
     );
     background-size: 1000px 100%;
   }
+
+  /* Gradient animation for progress bar */
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .animate-gradient {
+    animation: gradient 2s ease infinite;
+  }
 }
 
 /* Import custom colors CSS - MUST come after Tailwind layers to override properly */
